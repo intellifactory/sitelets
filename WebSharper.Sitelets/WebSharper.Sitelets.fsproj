@@ -8,8 +8,6 @@
     <Compile Include="Extensions.fs" />
     <Compile Include="Http.fs" />
     <Compile Include="Router.fs" />
-    <Compile Include="WebSharperOptions.fs" />
-    <Compile Include="Middleware.fs" />
     <Compile Include="InferredRouter.fs" />
     <Compile Include="RouterAttributeReader.fs" />
     <Compile Include="RouterInfer.Server.fs" />
@@ -23,6 +21,8 @@
     <Compile Include="Application.fs" />
     <Compile Include="Website.fs" />
     <Compile Include="Loading.fs" />
+    <Compile Include="WebSharperOptions.fs" />
+    <Compile Include="Middleware.fs" />
     <Compile Include="UrlHelpers.fsi" />
     <Compile Include="UrlHelpers.fs" />
     <None Include="paket.references" />

@@ -17,7 +17,7 @@
 // permissions and limitations under the License.
 //
 // $end{copyright}
-namespace WebSharper.AspNetCore
+namespace Sitelets
 
 open System
 open System.IO

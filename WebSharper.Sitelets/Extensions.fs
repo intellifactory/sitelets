@@ -53,6 +53,5 @@ module internal Extensions =
     let appendSlash (s: string) =
         if endsWithSlash s then s else s + "/"
 
-    [<Inline>]
     let internal ofObjNoConstraint (x: 'T) =
         if obj.ReferenceEquals(x, null) then None else Some x

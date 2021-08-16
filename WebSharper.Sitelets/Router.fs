@@ -27,17 +27,6 @@ open System.Text
 
 #nowarn "64" // type parameter renaming warnings 
 
-type XHRConfig =
-    {
-        mutable ResponseT : XMLHttpRequestResponseType
-        mutable Url : string
-        IsAsync : bool
-        Username : string
-        Password : string
-        mutable Timeout : int
-        mutable WithCredentials : bool
-    }
-
 /// Indicates the "Access-Control-Xyz" headers to send.
 type CorsAllows =
     {
@@ -49,7 +38,6 @@ type CorsAllows =
         Credentials : bool
     }
 
-    [<Inline>]
     static member Empty =
         {
             Origins = []
@@ -65,25 +53,21 @@ type CorsAllows =
 /// The corresponding Content should use Content.Cors.
 type Cors<'EndPoint> =
     {
-        [<OptionalField>]
         DefaultAllows : CorsAllows option
         // if None, then this is a preflight OPTIONS request
-        [<OptionalField>]
         EndPoint : 'EndPoint option
     }
 
 module Cors =
-    [<Inline>]
     let Of (endpoint: 'EndPoint) =
         { DefaultAllows = None; EndPoint = Some endpoint }
 
-    [<Inline>]
     let (|Of|Preflight|) (c: Cors<'EndPoint>) =
         match c.EndPoint with
         | Some ep -> Of ep
         | None -> Preflight
 
-[<NamedUnionCases "result"; RequireQualifiedAccess>]
+[<RequireQualifiedAccess>]
 type ParseRequestResult<'T> =
     | [<CompiledName "success">]
       Success of endpoint: 'T
@@ -121,7 +105,6 @@ module ActionEncoding =
 
 module StringEncoding =
 
-    [<JavaScript>]
     let isUnreserved isLast c =
         match c with
         | '-' | '_' -> true
@@ -138,27 +121,12 @@ module StringEncoding =
         else w.AppendFormat("~u{0:x4}", k)
         |> ignore
 
-    [<JavaScript>]
-    let writeEscapedAsString isLast c =
-        let k = int c
-        if isUnreserved isLast c then string c
-        elif k < 256 then "~" + k.JS.ToString(16).PadLeft(2, '0')
-        else "~u" + k.JS.ToString(16).PadLeft(4, '0')
-
-    [<JavaScript>]
     let write (s: string) = 
-        if IsClient then
-            s |> Seq.mapi (fun i c ->
-                writeEscapedAsString (i + 1 = s.Length) c
-            )
-            |> String.concat ""
-        else
-            let b = System.Text.StringBuilder()
-            s |> Seq.iteri (fun i c ->
-                writeEscaped b (i + 1 = s.Length) c)
-            string b
+        let b = System.Text.StringBuilder()
+        s |> Seq.iteri (fun i c ->
+            writeEscaped b (i + 1 = s.Length) c)
+        string b
 
-    [<JavaScript>]
     let inline ( ++ ) (a: int) (b: int) = (a <<< 4) + b
 
     [<Literal>]
@@ -193,7 +161,6 @@ module StringEncoding =
         | x ->
             x
 
-    [<JavaScript>]
     let readEscapedFromChars (chars: int list) =
         let mutable chars = chars
         let read() =
@@ -228,27 +195,15 @@ module StringEncoding =
             x
         , chars
 
-    [<JavaScript>]
     let read (s: string) = 
-        if IsClient then
-            let buf = ResizeArray()
-            let rec loop chars =
-                match readEscapedFromChars chars with
-                | ERROR, _ -> None
-                | EOF, _ -> Some (buf |> String.concat "")
-                | x, chars -> 
-                    buf.Add(string (char x))
-                    loop chars
-            s |> Seq.map int |> List.ofSeq |> loop
-        else
-            let buf = System.Text.StringBuilder()
-            use i = new System.IO.StringReader(s)
-            let rec loop () =
-                match readEscaped i with
-                | ERROR -> None
-                | EOF -> Some (string buf)
-                | x -> buf.Append(char x) |> ignore; loop ()
-            loop ()
+        let buf = System.Text.StringBuilder()
+        use i = new System.IO.StringReader(s)
+        let rec loop () =
+            match readEscaped i with
+            | ERROR -> None
+            | EOF -> Some (string buf)
+            | x -> buf.Append(char x) |> ignore; loop ()
+        loop ()
 
 type internal PathUtil =
     static member WriteQuery q =
@@ -285,31 +240,30 @@ type internal PathUtil =
             )
         sb.ToString()
 
-[<Proxy(typeof<PathUtil>)>]
-type internal PathUtilProxy =
-    static member Concat xs = 
-        let sb = System.Collections.Generic.Queue()
-        let mutable start = true
-        xs |> List.iter (fun x ->
-            if not (System.String.IsNullOrEmpty x) then
-                if start then
-                    start <- false
-                else 
-                    sb.Enqueue("/") |> ignore                    
-                sb.Enqueue(x) |> ignore
-        )
-        sb |> System.String.Concat
+//[<Proxy(typeof<PathUtil>)>]
+//type internal PathUtilProxy =
+//    static member Concat xs = 
+//        let sb = System.Collections.Generic.Queue()
+//        let mutable start = true
+//        xs |> List.iter (fun x ->
+//            if not (System.String.IsNullOrEmpty x) then
+//                if start then
+//                    start <- false
+//                else 
+//                    sb.Enqueue("/") |> ignore                    
+//                sb.Enqueue(x) |> ignore
+//        )
+//        sb |> System.String.Concat
 
-    static member WriteQuery q =
-        q |> Map.toSeq |> Seq.map (fun (k, v) -> k + "=" + v) |> String.concat "&"
+//    static member WriteQuery q =
+//        q |> Map.toSeq |> Seq.map (fun (k, v) -> k + "=" + v) |> String.concat "&"
 
-    static member WriteLink s q =
-        let query = 
-            if Map.isEmpty q then "" 
-            else "?" + PathUtil.WriteQuery(q)
-        "/" + PathUtilProxy.Concat s + query
+//    static member WriteLink s q =
+//        let query = 
+//            if Map.isEmpty q then "" 
+//            else "?" + PathUtil.WriteQuery(q)
+//        "/" + PathUtilProxy.Concat s + query
 
-[<JavaScript>]
 type Route =
     {
         Segments : list<string>
@@ -405,7 +359,6 @@ type Route =
             QueryArgs = q
         }
 
-    [<JavaScript false>]
     static member FromRequest(r: Http.Request) =
         let u = r.Uri
         let p =
@@ -441,7 +394,6 @@ type Route =
 
     member this.ToLink() = PathUtil.WriteLink this.Segments this.QueryArgs
 
-[<JavaScript>]
 module internal List =
     let rec startsWith s l =
         match s, l with
@@ -453,7 +405,6 @@ type IRouter<'T> =
     abstract Route : Http.Request -> option<'T>
     abstract Link : 'T -> option<System.Uri>
 
-[<JavaScript>]
 type Router =
     {
         Parse : Route -> Route seq
@@ -487,10 +438,8 @@ type Router =
                 Seq.append before.Segment after.Segment
         }
 
-    [<Inline>]
     static member (/) (before: string, after: Router) = Router.FromString before / after
 
-    [<Inline>]
     static member (/) (before: Router, after: string) = before / Router.FromString after
 
     static member (+) (a: Router, b: Router) =
@@ -500,11 +449,10 @@ type Router =
             Segment = a.Segment
         }
 
-    [<Inline>]
     static member Combine<'A, 'B when 'A: equality and 'B: equality>(a: Router<'A>, b: Router<'B>) : Router<'A * 'B> =
         a / b
 
-and [<JavaScript>] Router<'T when 'T: equality> =
+and Router<'T when 'T: equality> =
     {
         Parse : Route -> (Route * 'T) seq
         Write : 'T -> option<seq<Route>> 
@@ -536,10 +484,8 @@ and [<JavaScript>] Router<'T when 'T: equality> =
                 before.Write v |> Option.map (fun x -> Seq.append x after.Segment)
         }
 
-    [<Inline>]
     static member (/) (before: string, after: Router<'T>) = Router.FromString before / after
 
-    [<Inline>]
     static member (/) (before: Router<'T>, after: string) = before / Router.FromString after
 
     static member (+) (a: Router<'T>, b: Router<'T>) =
@@ -553,21 +499,16 @@ and [<JavaScript>] Router<'T when 'T: equality> =
         }
 
     interface IRouter<'T> with
-        [<JavaScript false>]
         member this.Route req = 
             let path = Route.FromRequest req
             this.Parse path
             |> Seq.tryPick (fun (path, value) -> if List.isEmpty path.Segments then Some value else None)
-        [<JavaScript false>]
         member this.Link ep =
             this.Write ep |> Option.map (fun p -> System.Uri((Route.Combine p).ToLink(), System.UriKind.Relative))
         
-[<JavaScript>]
 module Router =
-    [<Inline>]
     let Combine (a: Router<'A>) (b: Router<'B>) = a / b
-    
-    [<Inline>]
+
     let Shift (prefix: string) (router: Router<'A>) =
         prefix / router
 
@@ -731,86 +672,6 @@ module Router =
         | Some p -> p.ToLink()
         | None -> ""
 
-    let XHRWith (conf: XHRConfig) (router: Router<'A>) endpoint =
-        let xhr = XMLHttpRequest()
-        match Write router endpoint with
-        | Some path ->
-            if conf.ResponseT ===. JS.Undefined then
-                conf.ResponseT <- XMLHttpRequestResponseType.Text
-            let method = 
-                match path.Method with
-                | Some m -> As m
-                | None -> "POST"
-            Async.FromContinuations (fun (ok, err, cc) ->
-                xhr.Onload <- fun _ -> ok (As<string> xhr.Response)
-                xhr.Onerror <- fun _ -> err <| exn xhr.StatusText
-                // todo: cancellation
-                let url = path.ToLink()
-                conf.Url <-
-                    if As conf.Url then
-                        conf.Url.TrimEnd('/') + url
-                    else
-                        url
-                if conf.Username <> "" && conf.Password <> "" then
-                    xhr.Open(method, conf.Url, conf.IsAsync, conf.Username, conf.Password)
-                else
-                    xhr.Open(method, conf.Url, conf.IsAsync)
-                if conf.Timeout <> 0 then
-                    xhr.Timeout <- conf.Timeout
-                if conf.WithCredentials then
-                    xhr.WithCredentials <- conf.WithCredentials
-                match path.Body.Value with
-                | null ->
-                    if not (Map.isEmpty path.FormData) then
-                        let fd = JavaScript.FormData()
-                        path.FormData |> Map.iter (fun k v -> fd.Append(k, v))
-                        xhr.Send(fd)
-                    else
-                        xhr.Send()
-                | b ->
-                    xhr.Send(b)
-            )
-        | _ -> 
-            failwith "Failed to map endpoint to request" 
-
-    let XHR router endpoint =
-        let defaultXHRConfig =
-            {
-                ResponseT = XMLHttpRequestResponseType.Text
-                Url = ""
-                IsAsync = true
-                Username = ""
-                Password = ""
-                Timeout = 0
-                WithCredentials = false
-            }
-        XHRWith defaultXHRConfig router endpoint
-
-    let FetchWith (baseUrl: option<string>) (options: RequestOptions) (router: Router<'A>) endpoint : Promise<Response> =
-        let options = if As options then options else RequestOptions()
-        match Write router endpoint with
-        | Some path ->
-            options.Method <-defaultArg path.Method "POST"
-            match path.Body.Value with
-            | null ->
-                if not (Map.isEmpty path.FormData) then
-                    let fd = JavaScript.FormData()
-                    path.FormData |> Map.iter (fun k v -> fd.Append(k, v))
-                    options.Body <- fd
-            | b ->
-                options.Body <- b
-            let url = path.ToLink()
-            let url =
-                match baseUrl with
-                | Some baseUrl -> baseUrl.TrimEnd('/') + url
-                | None -> url
-            JS.Fetch(url, options)
-        | _ -> 
-            failwith "Failed to map endpoint to request" 
-
-    let Fetch router endpoint =
-        FetchWith None (RequestOptions()) router endpoint
-
     let HashLink (router: Router<'A>)  endpoint =
         "#" + Link router endpoint
     
@@ -863,7 +724,6 @@ module Router =
                 if predicate value then router.Write value else None
         }
 
-    [<Name "Box">]
     let private BoxImpl tryUnbox (router: Router<'A>): Router<obj> =
         {
             Parse = fun path ->
@@ -872,16 +732,14 @@ module Router =
                 tryUnbox value |> Option.bind router.Write
         }
 
-    [<Inline>]
     /// Converts to Router<obj>. When writing, a type check against type A is performed.
     let Box (router: Router<'A>): Router<obj> =
         BoxImpl (function :? 'A as v -> Some v | _ -> None) router
 
-    [<Inline; System.Obsolete("Do not use request body for routing.")>]
+    [<System.Obsolete("Do not use request body for routing.")>]
     let Json<'T when 'T: equality> : Router<'T> =
-        Body (fun s -> try Some (Json.Deserialize<'T> s) with _ -> None) Json.Serialize<'T>
+        Body (fun s -> try Some (Json.JsonSerializer.Deserialize<'T> s) with _ -> None) Json.JsonSerializer.Serialize<'T>
 
-    [<Name "Unbox">]
     let UnboxImpl<'A when 'A: equality> tryUnbox (router: Router<obj>) : Router<'A> =
         {
             Parse = fun path ->
@@ -890,12 +748,10 @@ module Router =
                 box value |> router.Write
         }
 
-    [<Inline>]
     /// Converts from Router<obj>. When parsing, a type check against type A is performed.
     let Unbox<'A when 'A: equality> (router: Router<obj>) : Router<'A> =
         UnboxImpl (function :? 'A as v -> Some v | _ -> None) router
 
-    [<Name "Cast">]
     let private CastImpl tryParseCast tryWriteCast (router: Router<'A>): Router<'B> =
         {
             Parse = fun path ->
@@ -904,7 +760,6 @@ module Router =
                 tryWriteCast value |> Option.bind router.Write
         }
 
-    [<Inline>]
     /// Converts a Router<A> to Router<B>. When parsing and writing, type checks are performed.
     /// Upcasting do not change set of parsed routes, downcasting restricts it within the target type.
     let Cast (router: Router<'A>): Router<'B> =
@@ -1030,57 +885,46 @@ module Router =
         Array item |> Map List.ofArray FArray.ofList
 
 type Router with
-    [<Inline>]
     member this.MapTo(value: 'T) =
         Router.MapTo value this
 
-    [<Inline>]
     static member Sum ([<System.ParamArray>] routers: Router<'T>[]) =
         Router.Sum routers
 
-    [<Inline>]
     static member Empty<'T when 'T: equality>() =
         Router.Empty<'T>
 
-    [<JavaScript false>]
     static member New(route: System.Func<Http.Request, 'T>, link: System.Func<'T, System.Uri>) =
         Router.New (route.Invoke >> Option.ofObj) (link.Invoke >> Option.ofObj)
 
-    [<Inline>]
     static member Method(method:string) =
         Router.Method method
 
-    [<Inline; System.Obsolete("Do not use request body for routing.")>]
+    [<System.Obsolete("Do not use request body for routing.")>]
     static member Body(des:System.Func<string, 'T>, ser: System.Func<'T, string>) =
         Router.Body (fun s -> des.Invoke s |> Option.ofObj) ser.Invoke 
 
-    [<Inline; System.Obsolete("Do not use request body for routing.")>]
+    [<System.Obsolete("Do not use request body for routing.")>]
     static member Json<'T when 'T: equality>() =
         Router.Json<'T>
 
-    [<Inline>]
     static member Table([<System.ParamArray>] mapping: ('T * string)[]) =
         Router.Table mapping
 
-    [<Inline>]
     static member Single(endpoint, route) =
         Router.Single endpoint route
 
-    [<Inline>]
     static member Delay(getRouter: System.Func<Router<'T>>) =
         Router.Delay getRouter.Invoke
 
 type Router<'T when 'T: equality> with
 
-    [<Inline>]
     member this.Query(key: string) =
         Router.Query key this
 
-    [<Inline>]
     member this.Link(endpoint: 'T) =
         Router.Link this endpoint
 
-    [<Inline>]
     member this.TryLink(endpoint: 'T, link: byref<string>) =
         match Router.TryLink this endpoint with
         | Some l ->
@@ -1088,53 +932,35 @@ type Router<'T when 'T: equality> with
             true
         | _ -> false
                
-    [<Inline>]
     member this.HashLink(endpoint: 'T) =
         Router.HashLink this endpoint
 
-    [<Inline>]
     member this.Map(decode: System.Func<'T, 'U>, encode: System.Func<'U, 'T>) =
         Router.TryMap (decode.Invoke >> ofObjNoConstraint) (encode.Invoke >> ofObjNoConstraint) this
 
-    [<Inline>]
     member this.Filter(predicate: System.Func<'T, bool>) =
         Router.Filter predicate.Invoke this
 
-    [<Inline>]
     member this.Cast<'U when 'U: equality>() : Router<'U> =
         Router.Cast this
 
-    [<Inline>]
     member this.FormData() =
         Router.FormData this
 
-    [<Inline>]
-    member this.XHR(endpoint, [<Optional>] settings) =
-        Router.XHRWith settings this endpoint |> Async.StartAsTask
-
-    [<Inline>]
-    member this.Fetch(endpoint, [<Optional>] baseUrl, [<Optional>] settings) =
-        Router.FetchWith (Option.ofObj baseUrl) settings this endpoint
-
-    [<Inline>]
     member this.Box() =
         Router.Box this
 
-    [<Inline>]
     member this.Array() =
         Router.Array this
 
 [<Extension>]
 type RouterExtensions =
-    [<Inline>]
     static member QueryNullable(router, key) =
         Router.QueryNullable key router
 
-    [<Inline>]
     static member Unbox<'T when 'T: equality>(router) =
         Router.Unbox<'T> router
 
-    [<Inline>]
     static member Nullable(router) =
         Router.Nullable router
 
@@ -1222,7 +1048,6 @@ module IRouter =
             member this.Link e = box e |> router.Link
         } 
 
-[<JavaScript>]
 module RouterOperators =
     open System.Globalization
     
@@ -1232,7 +1057,6 @@ module RouterOperators =
             Segment = Seq.empty
         }
     
-    [<Inline>]
     /// Parse/write a specific string.
     let r name : Router = Router.FromString name
 
@@ -1267,7 +1091,6 @@ module RouterOperators =
                 Some (Seq.singleton (Route.Segment (string value)))
         }
 
-    [<Inline>]
     let inline rTryParse< ^T when ^T: (static member TryParse: string * byref< ^T> -> bool) and ^T: equality>() =
         {
             Parse = fun path ->
@@ -1283,7 +1106,6 @@ module RouterOperators =
                 Some (Seq.singleton (Route.Segment (string value)))
         }
 
-    [<JavaScript false>]
     let inline rTryParseFloat< ^T when ^T: (static member TryParse: string * NumberStyles * NumberFormatInfo * byref< ^T> -> bool) and ^T: equality>() =
         {
             Parse = fun path ->
@@ -1306,7 +1128,7 @@ module RouterOperators =
     /// Parse/write an int.
     let rInt = rTryParse<int>()
     /// Parse/write a double.
-    let rDouble = if IsClient then rTryParse<double>() else rTryParseFloat<double>()
+    let rDouble = rTryParseFloat<double>()
     /// Parse/write a signed byte.
     let rSByte = rTryParse<sbyte>() 
     /// Parse/write a byte.
@@ -1322,7 +1144,7 @@ module RouterOperators =
     /// Parse/write a 64-bit unsigned int.
     let rUInt64 = rTryParse<uint64>() 
     /// Parse/write a single.
-    let rSingle = if IsClient then rTryParse<single>() else rTryParseFloat<single>()
+    let rSingle = rTryParseFloat<single>()
 
     /// Parse/write a bool.
     let rBool : Router<bool> =
@@ -1444,234 +1266,3 @@ module RouterOperators =
                     Some (parts |> Seq.collect Option.get)
                 else None                      
         }
-
-    let internal JSTuple (items: Router<obj>[]) : Router<obj> =
-        let readItems (value: obj) =
-            Array.init items.Length (fun i ->
-                (As<Array<obj>> value).[i]
-            )
-        Tuple readItems box items
-
-    [<Inline>]
-    let internal JSEmpty () : Router<obj> = Router.Empty<obj>
-
-    [<Inline>]
-    let internal JSArray item = Router.Array item
-    
-    [<Inline>]
-    let internal JSList item = Router.List item
-
-    [<Inline>]
-    let internal JSOption item = Router.Option item
-
-    [<Inline>]
-    let internal JSNullable item = Router.Nullable item
-
-    [<Inline>]
-    let internal JSQuery key item = Router.Query key item
-
-    [<Inline>]
-    let internal JSQueryOption key item = Router.QueryOption key item
-
-    [<Inline>]
-    let internal JSQueryNullable key item = Router.QueryNullable key item
-
-    [<Inline>]
-    let internal JSFormData item = Router.FormData item
-
-    [<Inline>]
-    let internal JSJson<'T when 'T: equality> = Router.Json<'T>
-
-    [<Inline>]
-    let internal JSBox item = Router.Box item
-
-    [<Inline>]
-    let internal JSDelayed getRouter = Router.Delay getRouter
-        
-    let internal JSRecord (t: obj) (fields: (string * bool * Router<obj>)[]) : Router<obj> =
-        let readFields value =
-            fields |> Array.map (fun (fn, opt, _) ->
-                if opt then
-                    let v = value?(fn)
-                    if v = JS.Undefined then box None else box (Some v)
-                else
-                    value?(fn)
-            )
-        let createRecord fieldValues =
-            let o = if isNull t then New [] else JS.New t
-            (fields, fieldValues) ||> Array.iter2 (fun (fn, opt, _) v ->
-                if opt then
-                    match As<option<obj>> v with
-                    | None -> ()
-                    | Some v ->
-                        o?(fn) <- v
-                else
-                    o?(fn) <- v
-            )
-            o
-        let fields = fields |> Array.map (fun (_, _, r) -> r)
-        let fieldsList =  List.ofArray fields        
-        {
-            Parse = fun path ->
-                let rec collect fields path acc =
-                    match fields with 
-                    | [] -> Seq.singleton (path, createRecord (Array.ofList (List.rev acc)))
-                    | h :: t -> h.Parse path |> Seq.collect(fun (p, a) -> collect t p (a :: acc))
-                collect fieldsList path []
-            Write = fun value ->
-                let parts =
-                    (readFields value, fields) ||> Array.map2 (fun v r ->
-                        r.Write v
-                    )
-                if Array.forall Option.isSome parts then
-                    Some (parts |> Seq.collect Option.get)
-                else None                      
-        }
-    
-    let internal isCorrectMethod m p =
-        match p, m with
-        | Some pm, Some m -> pm = m
-        | _, Some _ -> false
-        | _ -> true
-
-    let internal JSUnion (t: obj) (cases: (option<obj> * (option<string> * string[])[] * Router<obj>[])[]) : Router<obj> = 
-        let getTag (value: obj) : int = 
-            let constIndex =
-                cases |> Seq.tryFindIndex (fun case ->
-                    match case with
-                    | Some c, _, _ -> value = c
-                    | _ -> false
-                )
-            match constIndex with
-            | Some i -> i
-            | _ -> value?("$") 
-        let readFields (tag: int) (value: obj) : obj[] =
-            let _, _, fields = cases.[tag]
-            Array.init fields.Length (fun i ->
-                value?("$" + string i)
-            )
-        let createCase (tag: int) (fieldValues: obj[]) : obj =
-            let o = if isNull t then New [] else JS.New t
-            match cases.[tag] with
-            | Some constant, _, _ -> constant
-            | _ ->
-                o?("$") <- tag
-                fieldValues |> Seq.iteri (fun i v ->
-                    o?("$" + string i) <- v
-                )
-                o
-        let parseCases =
-            cases |> Seq.indexed |> Seq.collect (fun (i, (_, eps, fields)) ->
-                eps |> Seq.map (fun (m, p) -> i, m, p, fields)    
-            )
-            |> Array.ofSeq
-        {                                                    
-            Parse = fun path ->
-                parseCases |> Seq.collect (fun (i, m, s, fields) ->
-                    if isCorrectMethod m path.Method then
-                        match path.Segments |> List.startsWith (List.ofArray s) with
-                        | Some p -> 
-                            match List.ofArray fields with
-                            | [] -> Seq.singleton ({ path with Segments = p }, createCase i [||])
-                            | fields -> 
-                                let rec collect fields path acc =
-                                    match fields with 
-                                    | [] -> Seq.singleton (path, createCase i (Array.ofList (List.rev acc)))
-                                    | h :: t -> h.Parse path |> Seq.collect(fun (p, a) -> collect t p (a :: acc))
-                                collect fields { path with Segments = p } []
-                        | None -> Seq.empty
-                    else
-                        Seq.empty
-                )
-            Write = fun value ->
-                let tag = getTag value
-                let _, eps, fields = cases.[tag]
-                let method, path = eps.[0]
-                let casePath = Seq.singleton (Route.Segment (List.ofArray path, method))
-                if Array.isEmpty fields then
-                    Some casePath
-                else
-                    let fieldParts =
-                        (readFields tag value, fields) ||> Array.map2 (fun v f -> f.Write v)
-                    if Array.forall Option.isSome fieldParts then
-                        Some (Seq.append casePath (fieldParts |> Seq.collect Option.get))
-                    else None    
-        }
-
-    let internal JSClass (ctor: unit -> obj) (fields: (string * bool * Router<obj>)[]) (endpoints: (option<string> * Union<string, int>[])[]) (subClasses: Router<obj>[]) : Router<obj> =
-        let readFields value =
-            fields |> Array.map (fun (fn, opt, _) ->
-                if opt then
-                    let v = value?(fn)
-                    if v = JS.Undefined then box None else box (Some v)
-                else
-                    value?(fn)
-            )
-        let createObject fieldValues =
-            let o = ctor()
-            (fields, fieldValues) ||> Array.iter2 (fun (fn, opt, _) v ->
-                if opt then
-                    match As<option<obj>> v with
-                    | None -> ()
-                    | Some v ->
-                        o?(fn) <- v
-                else
-                    o?(fn) <- v
-            )
-            o
-        let partsAndRoutersLists =
-            endpoints |> Array.map (fun (m, ep) ->
-                m, 
-                ep |> Seq.map (fun p ->
-                    match p with
-                    | Union1Of2 s -> Choice1Of2 s
-                    | Union2Of2 i -> 
-                        let _, _, r = fields.[i]
-                        Choice2Of2 (i, r)
-                ) |> List.ofSeq
-            )
-        let thisClass =
-            {
-                Parse = fun path ->
-                    let rec collect fields path arr =
-                        match fields with 
-                        | [] -> 
-                            Seq.singleton (path, createObject arr)
-                        | Choice1Of2 p :: t -> 
-                            match path.Segments with
-                            | pp :: pr when pp = p ->
-                                collect t { path with Segments = pr } arr
-                            | _ -> Seq.empty
-                        | Choice2Of2 (i, h) :: t -> 
-                            h.Parse path |> Seq.collect(fun (p, a) -> 
-                                let narr = Array.copy arr
-                                narr.[i] <- a
-                                collect t p narr
-                            )
-                    partsAndRoutersLists |> Seq.collect (fun (m, ps) -> 
-                        if isCorrectMethod m path.Method then
-                            let arr = Array.zeroCreate fields.Length
-                            collect ps path arr
-                        else Seq.empty
-                    )
-                Write = fun value ->
-                    let values = readFields value
-                    let method, ep = endpoints.[0]
-                    let parts =
-                        ep |> Array.map (function
-                            | Union1Of2 p -> Some (Seq.singleton (Route.Segment(p)))
-                            | Union2Of2 i ->
-                                let _, _, r = fields.[i] 
-                                r.Write(values.[i])
-                        )
-                    if Array.forall Option.isSome parts then
-                        let w = parts |> Seq.collect Option.get
-                        match method with
-                        | Some _ -> Some (Seq.append (Seq.singleton { Route.Empty with Method = method }) w)
-                        | None -> Some w
-                    else None                      
-            }
-        if Array.isEmpty subClasses then
-            thisClass
-        else
-            Router.Sum (Seq.append subClasses (Seq.singleton thisClass))
