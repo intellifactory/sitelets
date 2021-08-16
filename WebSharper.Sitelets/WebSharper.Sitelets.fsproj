@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <WebSharperProject>Library</WebSharperProject>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Extensions.fs" />
+    <Compile Include="Http.fs" />
+    <Compile Include="Router.fs" />
+    <Compile Include="InferredRouter.fs" />
+    <Compile Include="RouterAttributeReader.fs" />
+    <Compile Include="RouterInfer.Server.fs" />
+    <Compile Include="RouterInfer.Client.fs" />
+    <Compile Include="Context.fsi" />
+    <Compile Include="Context.fs" />
+    <Compile Include="Controller.fs" />
+    <Compile Include="Sitelet.fsi" />
+    <Compile Include="Sitelet.fs" />
+    <Compile Include="Application.fsi" />
+    <Compile Include="Application.fs" />
+    <Compile Include="Website.fs" />
+    <Compile Include="Loading.fs" />
+    <Compile Include="UrlHelpers.fsi" />
+    <Compile Include="UrlHelpers.fs" />
+    <None Include="paket.references" />
+  </ItemGroup>
+</Project>
