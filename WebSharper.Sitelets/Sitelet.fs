@@ -25,6 +25,7 @@ namespace Sitelets
 open System
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
+open Microsoft.AspNetCore.Http
 
 type Sitelet<'T when 'T : equality> =
     {
@@ -59,26 +60,22 @@ module Sitelet =
             Controller =
                 {
                     Handle = fun endpoint ->
-                        Content.CustomContent <| fun _ ->
-                            {
-                                Status = Http.Status.NotFound
-                                Headers = []
-                                WriteBody = ignore
-                            }
+                        {
+                            Status = Http.Status.NotFound
+                            Headers = []
+                            WriteBody = ignore
+                        }
                 }
         }
 
     /// Creates a WebSharper.Sitelet using the given router and handler function.
-    let New (router: IRouter<'T>) (handle: Context<'T> -> 'T -> Async<obj>) =
+    let New (router: IRouter<'T>) (handle: HttpContext -> 'T -> Async<obj>) =
         {
             Router = router
             Controller =
             {
                 Handle = fun ep ->
-                    Content.CustomContentAsync <| fun ctx -> async {
-                        let! content = handle ctx ep
-                        return! WebSharper.Sitelets.Content.ToResponse content ctx
-                    }
+                    fun ctx -> handle ctx ep
             }
         }
 
@@ -125,7 +122,7 @@ module Sitelet =
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
     /// and serves a single content value at a given location.
-    let Content (location: string) (endpoint: 'T) (cnt: Context<'T> -> Async<obj>) =
+    let Content (location: string) (endpoint: 'T) (cnt: HttpContext -> Async<obj>) =
         {
             Router = Router.Single endpoint location
             Controller = { Handle = fun _ ->
@@ -267,7 +264,7 @@ module Sitelet =
 
     /// Constructs a sitelet with an inferred router and a given controller
     /// function.
-    let Infer<'T when 'T : equality> (handle : Context<'T> -> 'T -> Async<obj>) =
+    let Infer<'T when 'T : equality> (handle : HttpContext -> 'T -> Async<obj>) =
         {
             Router = Router.IInfer<'T>()
             Controller = { Handle = fun x ->
@@ -278,7 +275,7 @@ module Sitelet =
             }
         }
 
-    let InferWithCustomErrors<'T when 'T : equality> (handle : Context<'T> -> ParseRequestResult<'T> -> Async<obj>) =
+    let InferWithCustomErrors<'T when 'T : equality> (handle : HttpContext -> ParseRequestResult<'T> -> Async<obj>) =
         {
             Router = Router.IInferWithCustomErrors<'T>()
             Controller = { Handle = fun x ->
@@ -290,7 +287,7 @@ module Sitelet =
             }
         }
 
-    let InferPartial (embed: 'T1 -> 'T2) (unembed: 'T2 -> 'T1 option) (mkContent: Context<'T2> -> 'T1 -> Async<obj>) : Sitelet<'T2> =
+    let InferPartial (embed: 'T1 -> 'T2) (unembed: 'T2 -> 'T1 option) (mkContent: HttpContext -> 'T1 -> Async<obj>) : Sitelet<'T2> =
         {
             Router = Router.IInfer<'T1>() |> IRouter.Embed embed unembed
             Controller = { Handle = fun p ->
@@ -320,7 +317,7 @@ module Sitelet =
     let WithSettings (settings: seq<string * string>) (sitelet: Sitelet<'T>) : Sitelet<'T> =
         MapContext (Context.WithSettings settings) sitelet
 
-type RouteHandler<'T> = delegate of Context<obj> * 'T -> Task<CSharpContent> 
+type RouteHandler<'T> = delegate of HttpContext * 'T -> Task<obj> 
 
 [<CompiledName "Sitelet"; Sealed>]
 type CSharpSitelet =
@@ -329,13 +326,10 @@ type CSharpSitelet =
 
     static member New(router: Router<'T>, handle: RouteHandler<'T>) =
         Sitelet.New (Router.Box router) (fun ctx ep -> 
-            async {
-                let! c = handle.Invoke(ctx, unbox<'T> ep) |> Async.AwaitTask
-                return c.AsContent
-            }
+            handle.Invoke(ctx, unbox<'T> ep) |> Async.AwaitTask
         )
 
-    static member Content (location: string, endpoint: 'T, cnt: Func<Context<'T>, Task<obj>>) =
+    static member Content (location: string, endpoint: 'T, cnt: Func<HttpContext, Task<obj>>) =
         Sitelet.Content location endpoint (cnt.Invoke >> Async.AwaitTask) 
         
     static member Sum ([<ParamArray>] sitelets: Sitelet<'T>[]) =
@@ -367,7 +361,7 @@ type SiteletExtensions =
         Sitelet.Unbox<'T> sitelet
 
     [<Extension>]
-    static member MapContent (sitelet: Sitelet<obj>, f: Func<Task<CSharpContent>, Task<CSharpContent>>) =
+    static member MapContent (sitelet: Sitelet<obj>, f: Func<Task<obj>, Task<obj>>) =
         { sitelet with
             Controller =
                 { Handle = fun ep ->
@@ -384,14 +378,14 @@ type SiteletBuilder() =
 
     let sitelets = ResizeArray()
 
-    member this.With<'T when 'T : equality>(content: Func<Context, 'T, Task<obj>>) =
+    member this.With<'T when 'T : equality>(content: Func<HttpContext, 'T, Task<obj>>) =
         sitelets.Add <|
             Sitelet.InferPartial
                 box
                 tryUnbox<'T>
                 (fun ctx endpoint -> async {
                     let! content =
-                        content.Invoke(Context(ctx), endpoint)
+                        content.Invoke(ctx, endpoint)
                         |> Async.AwaitTask
                     return
                         match content.AsContent with
@@ -400,10 +394,10 @@ type SiteletBuilder() =
                 })
         this
 
-    member this.With(path: string, content: Func<Context, Task<obj>>) =
+    member this.With(path: string, content: Func<HttpContext, Task<obj>>) =
         let content ctx =
-            content.Invoke(Context(ctx))
-                .ContinueWith(fun (t: Task<obj>) -> t.Result.AsContent)
+            content.Invoke(ctx)
+                .ContinueWith(fun (t: Task<obj>) -> t.Result)
             |> Async.AwaitTask
         sitelets.Add <| Sitelet.Content path (box path) content
         this

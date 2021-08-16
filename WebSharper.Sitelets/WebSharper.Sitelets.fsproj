@@ -12,8 +12,6 @@
     <Compile Include="RouterAttributeReader.fs" />
     <Compile Include="RouterInfer.Server.fs" />
     <Compile Include="RouterInfer.Client.fs" />
-    <Compile Include="Context.fsi" />
-    <Compile Include="Context.fs" />
     <Compile Include="Controller.fs" />
     <Compile Include="Sitelet.fsi" />
     <Compile Include="Sitelet.fs" />
@@ -26,5 +24,9 @@
     <Compile Include="UrlHelpers.fsi" />
     <Compile Include="UrlHelpers.fs" />
     <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.0.0" />
+    <PackageReference Include="System.Text.Json" Version="5.0.2" />
   </ItemGroup>
 </Project>
