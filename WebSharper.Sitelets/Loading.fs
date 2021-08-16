@@ -63,15 +63,9 @@ let private TryLoadSiteB (assembly: Assembly) =
         )
     )
 
-/// Speed up Sitelet value discovery by not looking at System and non-WS assemblies.
-let private HasWSMetadata (a: Assembly) =
-    if a.FullName.StartsWith "System" then false else
-        a.GetManifestResourceNames() |> Array.contains "WebSharper.meta"
-
 /// Try to find a sitelet defined in one of these assemblies.
 let DiscoverSitelet(assemblies: seq<Assembly>) =
-    let assemblies = 
-        Seq.cache (assemblies |> Seq.filter HasWSMetadata)
+    let assemblies = Seq.cache assemblies
     match Seq.tryPick TryLoadSiteA assemblies with
     | Some (s, _) -> Some s
     | _ ->
