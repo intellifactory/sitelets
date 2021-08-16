@@ -25,5 +25,5 @@ open Microsoft.AspNetCore.Http
 /// Represents a controller that matches actions to responses.
 type Controller<'Action> =
     {
-        Handle : HttpContext -> 'Action -> Async<obj>
+        Handle : HttpContext -> 'Action -> obj
     }

@@ -20,6 +20,8 @@
 
 namespace Sitelets
 
+open Microsoft.AspNetCore.Mvc
+
 #nowarn "44" // Obsolete CustomContent, CustomContentAsync, PageContent, PageContentAsync
 
 open System
@@ -59,24 +61,17 @@ module Sitelet =
             Router = Router.Empty<'T>
             Controller =
                 {
-                    Handle = fun ctx _ ->
-                        async {
-                            let resp = ctx
-                            resp.Response.StatusCode <- StatusCodes.Status404NotFound
-                            resp.Response.Body <- IO.Stream.Null
-                            return resp :> obj
-                        }
+                    Handle = fun ctx endpoint -> null
                 }
         }
 
     /// Creates a WebSharper.Sitelet using the given router and handler function.
-    let New (router: IRouter<'T>) (handle: HttpContext -> 'T -> Async<obj>) =
+    let New (router: IRouter<'T>) (handle: HttpContext -> 'T -> obj) =
         {
             Router = router
             Controller =
             {
-                Handle = fun ctx ep ->
-                    handle ctx ep
+                Handle = handle
             }
         }
 
@@ -95,45 +90,28 @@ module Sitelet =
             Controller =
                 { Handle = fun ctx endpoint ->
                     let prot = filter
-                    let failure (ctx: HttpContext) = async {
-                        ctx.Response.Redirect ""
-                        return ctx.Response :> obj
-                    }
-                    async {
-                        try
-                            //let! loggedIn = ctx.UserSession.GetLoggedInUser ()
-                            let! loggedIn = 
-                                async {
-                                    try
-                                        return Some (ctx.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier))
-                                    with _ -> return None
-                                }
-                            match loggedIn with
-                            | Some user ->
-                                if prot.VerifyUser user then
-                                    let content = site.Controller.Handle ctx endpoint
-                                    return ctx.Response :> obj
-                                else
-                                    return! failure ctx
-                            | None ->
-                                return! failure ctx
-                        with :? NullReferenceException ->
-                            // If server crashes or is restarted and doesn't have a hardcoded machine
-                            // key then GetLoggedInUser() throws an exception. Log out in this case.
-                            ctx.Session.Remove ""
-                            return! failure ctx
-                    }
+                    let failure () =
+                        RedirectResult (prot.LoginRedirect endpoint) :> obj
+                    let loggedIn = 
+                        let nameClaim = ctx.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier)
+                        if isNull nameClaim then None else Some nameClaim.Value
+                    match loggedIn with
+                    | Some user ->
+                        if prot.VerifyUser user then
+                            site.Controller.Handle ctx endpoint
+                        else
+                            failure ()
+                    | None ->
+                        failure ()
                 }
         }
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
     /// and serves a single content value at a given location.
-    let Content (location: string) (endpoint: 'T) (cnt: HttpContext -> Async<obj>) =
+    let Content (location: string) (endpoint: 'T) (cnt: HttpContext -> obj) =
         {
             Router = Router.Single endpoint location
-            Controller = { Handle = fun ctx _ ->
-                cnt ctx
-            }
+            Controller = { Handle = fun ctx _ -> cnt ctx }
         }
 
     /// Maps over the sitelet endpoint type. Requires a bijection.
@@ -143,24 +121,18 @@ module Sitelet =
             Controller =
                 {
                     Handle = fun ctx endpoint ->
-                        match s.Controller.Handle <| g endpoint with
-                        | Content.CustomContent genResp ->
-                            CustomContent (genResp << Context.Map f)
-                        | Content.CustomContentAsync genResp ->
-                            CustomContentAsync (genResp << Context.Map f)
+                        s.Controller.Handle ctx (g endpoint)
                 }
         }
 
     /// Maps over the served sitelet content.
-    let MapContent (f: Async<obj> -> Async<obj>) (sitelet: Sitelet<'T>) : Sitelet<'T> =
+    let MapContent (f: obj -> obj) (sitelet: Sitelet<'T>) : Sitelet<'T> =
         { sitelet with
             Controller =
                 { Handle = fun ctx ep ->
                     ep
-                    |> sitelet.Controller.Handle
-                    |> async.Return
+                    |> sitelet.Controller.Handle ctx
                     |> f
-                    |> C.FromAsync
                 }
         }
 
