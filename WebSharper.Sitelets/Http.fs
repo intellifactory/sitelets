@@ -18,7 +18,7 @@
 //
 // $end{copyright}
 
-namespace WebSharper.Sitelets
+namespace Sitelets
 
 /// Defines HTTP-related functionality.
 module Http =

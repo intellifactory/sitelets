@@ -18,14 +18,12 @@
 //
 // $end{copyright}
 
-namespace WebSharper.Sitelets
+namespace Sitelets
 
 open System.Collections.Generic
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 open System.Text
-open WebSharper
-open WebSharper.JavaScript
 
 #nowarn "64" // type parameter renaming warnings 
 

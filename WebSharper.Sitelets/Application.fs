@@ -20,7 +20,7 @@
 
 namespace Sitelets
 
-open WebSharper.Sitelets
+open Sitelets
 
 module SPA =
     type EndPoint =
@@ -31,7 +31,7 @@ namespace WebSharper
 open System
 open System.Runtime.CompilerServices
 open System.Threading.Tasks
-open WebSharper.Sitelets
+open Sitelets
 
 [<Class>]
 type Application =

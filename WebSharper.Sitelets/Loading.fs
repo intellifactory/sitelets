@@ -18,7 +18,7 @@
 //
 // $end{copyright}
 
-module WebSharper.Sitelets.Loading
+module Sitelets.Loading
 
 open System
 open System.Reflection

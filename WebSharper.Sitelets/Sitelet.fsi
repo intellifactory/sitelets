@@ -18,7 +18,7 @@
 //
 // $end{copyright}
 
-namespace WebSharper.Sitelets
+namespace Sitelets
 
 open System
 open System.Threading.Tasks

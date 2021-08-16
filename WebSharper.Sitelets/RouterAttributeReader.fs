@@ -18,12 +18,10 @@
 //
 // $end{copyright}
 
-module internal WebSharper.Sitelets.RouterInferCommon
+module internal Sitelets.RouterInferCommon
 
 open System
 open System.Collections.Generic
-open WebSharper
-open WebSharper.Core
 
 module M = WebSharper.Core.Metadata
 module P = FSharp.Quotations.Patterns

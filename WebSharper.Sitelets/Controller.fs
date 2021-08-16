@@ -18,7 +18,7 @@
 //
 // $end{copyright}
 
-namespace WebSharper.Sitelets
+namespace Sitelets
 
 /// Represents a controller that matches actions to responses.
 type Controller<'Action> =

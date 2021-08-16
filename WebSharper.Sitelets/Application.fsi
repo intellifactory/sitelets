@@ -18,17 +18,17 @@
 //
 // $end{copyright}
 
-namespace WebSharper
+namespace Sitelets
 
 module SPA =
     type EndPoint
 
-namespace WebSharper
+namespace Sitelets
 
 open System
 open System.Runtime.CompilerServices
 open System.Threading.Tasks
-open WebSharper.Sitelets
+open Sitelets
 
 [<Class>]
 type Application =

@@ -19,9 +19,7 @@
 // $end{copyright}
 
 /// Implements utilities for use by the current assembly.
-namespace WebSharper.Sitelets
-
-open WebSharper
+namespace Sitelets
 
 [<AutoOpen>]
 module internal Extensions =

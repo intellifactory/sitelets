@@ -18,11 +18,9 @@
 //
 // $end{copyright}
 
-namespace WebSharper.Sitelets
+namespace Sitelets
 
 open FSharp.Reflection
-open WebSharper
-open WebSharper.JavaScript
 open System.Collections.Generic
 open System.Text
 open System.Globalization

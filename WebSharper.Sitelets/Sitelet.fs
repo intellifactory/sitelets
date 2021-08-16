@@ -18,7 +18,7 @@
 //
 // $end{copyright}
 
-namespace WebSharper.Sitelets
+namespace Sitelets
 
 #nowarn "44" // Obsolete CustomContent, CustomContentAsync, PageContent, PageContentAsync
 
