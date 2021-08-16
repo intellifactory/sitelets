@@ -59,11 +59,12 @@ module Sitelet =
             Router = Router.Empty<'T>
             Controller =
                 {
-                    Handle = fun endpoint ->
-                        {
-                            Status = Http.Status.NotFound
-                            Headers = []
-                            WriteBody = ignore
+                    Handle = fun ctx _ ->
+                        async {
+                            let resp = ctx
+                            resp.Response.StatusCode <- StatusCodes.Status404NotFound
+                            resp.Response.Body <- IO.Stream.Null
+                            return resp :> obj
                         }
                 }
         }
@@ -74,8 +75,8 @@ module Sitelet =
             Router = router
             Controller =
             {
-                Handle = fun ep ->
-                    fun ctx -> handle ctx ep
+                Handle = fun ctx ep ->
+                    handle ctx ep
             }
         }
 
@@ -92,31 +93,36 @@ module Sitelet =
         {
             Router = site.Router
             Controller =
-                { Handle = fun endpoint ->
+                { Handle = fun ctx endpoint ->
                     let prot = filter
-                    let failure ctx = async {
-                        let! c = Content.RedirectTemporary (prot.LoginRedirect endpoint)
-                        return! Content.ToResponse c ctx
+                    let failure (ctx: HttpContext) = async {
+                        ctx.Response.Redirect ""
+                        return ctx.Response :> obj
                     }
-                    Content.CustomContentAsync <| fun ctx ->
-                        async {
-                            try
-                                let! loggedIn = ctx.UserSession.GetLoggedInUser ()
-                                match loggedIn with
-                                | Some user ->
-                                    if prot.VerifyUser user then
-                                        let content = site.Controller.Handle endpoint
-                                        return! Content.ToResponse content ctx
-                                    else
-                                        return! failure ctx
-                                | None ->
+                    async {
+                        try
+                            //let! loggedIn = ctx.UserSession.GetLoggedInUser ()
+                            let! loggedIn = 
+                                async {
+                                    try
+                                        return Some (ctx.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier))
+                                    with _ -> return None
+                                }
+                            match loggedIn with
+                            | Some user ->
+                                if prot.VerifyUser user then
+                                    let content = site.Controller.Handle ctx endpoint
+                                    return ctx.Response :> obj
+                                else
                                     return! failure ctx
-                            with :? NullReferenceException ->
-                                // If server crashes or is restarted and doesn't have a hardcoded machine
-                                // key then GetLoggedInUser() throws an exception. Log out in this case.
-                                do! ctx.UserSession.Logout()
+                            | None ->
                                 return! failure ctx
-                        }
+                        with :? NullReferenceException ->
+                            // If server crashes or is restarted and doesn't have a hardcoded machine
+                            // key then GetLoggedInUser() throws an exception. Log out in this case.
+                            ctx.Session.Remove ""
+                            return! failure ctx
+                    }
                 }
         }
 
@@ -125,11 +131,8 @@ module Sitelet =
     let Content (location: string) (endpoint: 'T) (cnt: HttpContext -> Async<obj>) =
         {
             Router = Router.Single endpoint location
-            Controller = { Handle = fun _ ->
-                Content.CustomContentAsync <| fun ctx -> async {
-                    let! cnt = cnt ctx
-                    return! Content.ToResponse cnt ctx
-                }
+            Controller = { Handle = fun ctx _ ->
+                cnt ctx
             }
         }
 
@@ -139,7 +142,7 @@ module Sitelet =
             Router = IRouter.Map f g s.Router
             Controller =
                 {
-                    Handle = fun endpoint ->
+                    Handle = fun ctx endpoint ->
                         match s.Controller.Handle <| g endpoint with
                         | Content.CustomContent genResp ->
                             CustomContent (genResp << Context.Map f)
@@ -152,7 +155,7 @@ module Sitelet =
     let MapContent (f: Async<obj> -> Async<obj>) (sitelet: Sitelet<'T>) : Sitelet<'T> =
         { sitelet with
             Controller =
-                { Handle = fun ep ->
+                { Handle = fun ctx ep ->
                     ep
                     |> sitelet.Controller.Handle
                     |> async.Return
@@ -178,7 +181,7 @@ module Sitelet =
         {
             Router = IRouter.Embed embed unembed sitelet.Router
             Controller =
-                { Handle = fun a ->
+                { Handle = fun ctx a ->
                     match unembed a with
                     | Some ea -> C.CustomContentAsync <| fun ctx ->
                         C.ToResponse (sitelet.Controller.Handle ea) (Context.Map embed ctx)
@@ -241,9 +244,10 @@ module Sitelet =
         {
             Router = IRouter.Box sitelet.Router
             Controller =
-                { Handle = fun a ->
-                    C.CustomContentAsync <| fun ctx ->
-                        C.ToResponse (sitelet.Controller.Handle (unbox a)) (Context.Map box ctx)
+                { Handle = fun ctx a ->
+                    //C.CustomContentAsync <| fun ctx ->
+                    //    C.ToResponse (sitelet.Controller.Handle (unbox a)) (Context.Map box ctx)
+                    sitelet.Controller.Handle ctx (unbox a)
                 }
         }
 
@@ -254,9 +258,10 @@ module Sitelet =
         {
             Router = IRouter.Unbox sitelet.Router
             Controller =
-                { Handle = fun a ->
-                    C.CustomContentAsync <| fun ctx ->
-                        C.ToResponse (sitelet.Controller.Handle (box a)) (Context.Map unbox ctx)
+                { Handle = fun ctx a ->
+                    //C.CustomContentAsync <| fun ctx ->
+                    //    C.ToResponse (sitelet.Controller.Handle (box a)) (Context.Map unbox ctx)
+                    sitelet.Controller.Handle ctx (box a)
                 }
         }
 
@@ -278,11 +283,14 @@ module Sitelet =
     let InferWithCustomErrors<'T when 'T : equality> (handle : HttpContext -> ParseRequestResult<'T> -> Async<obj>) =
         {
             Router = Router.IInferWithCustomErrors<'T>()
-            Controller = { Handle = fun x ->
-                C.CustomContentAsync <| fun ctx -> async {
-                    let ctx = (Context.Map ParseRequestResult.Success ctx)
-                    let! content = handle ctx x
-                    return! C.ToResponse content ctx
+            Controller = { Handle = fun ctx x ->
+                //C.CustomContentAsync <| fun ctx -> async {
+                //    let ctx = (Context.Map ParseRequestResult.Success ctx)
+                //    let! content = handle ctx x
+                //    return! C.ToResponse content ctx
+                //}
+                async {
+                    return! handle ctx x
                 }
             }
         }
@@ -306,11 +314,12 @@ module Sitelet =
         | Some (embed, unembed) -> InferPartial embed unembed mkContent
         | None -> failwith "Invalid union case in Sitelet.InferPartialInUnion"
 
-    let MapContext (f: Context<'T> -> Context<'T>) (sitelet: Sitelet<'T>) : Sitelet<'T> =
+    let MapContext (f: HttpContext -> HttpContext) (sitelet: Sitelet<'T>) : Sitelet<'T> =
         { sitelet with
-            Controller = { Handle = fun action ->
-                CustomContentAsync <| fun ctx ->
-                    C.ToResponse (sitelet.Controller.Handle action) (f ctx)
+            Controller = { Handle = fun ctx action ->
+                //CustomContentAsync <| fun ctx ->
+                //    C.ToResponse (sitelet.Controller.Handle action) (f ctx)
+                sitelet.Controller.Handle (f ctx) action
             }
         }
 
@@ -366,11 +375,10 @@ type SiteletExtensions =
             Controller =
                 { Handle = fun ep ->
                     (ep |> sitelet.Controller.Handle
-                        |> CSharpContent.FromContent
                         |> Task.FromResult
                         |> f.Invoke
-                        |> CSharpContent.FromTask
-                    ).AsContent
+                        |> Async.AwaitTask
+                    )
                 }
         }
 

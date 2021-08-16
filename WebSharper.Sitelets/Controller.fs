@@ -20,8 +20,10 @@
 
 namespace Sitelets
 
+open Microsoft.AspNetCore.Http
+
 /// Represents a controller that matches actions to responses.
 type Controller<'Action> =
     {
-        Handle : 'Action -> obj
+        Handle : HttpContext -> 'Action -> Async<obj>
     }
