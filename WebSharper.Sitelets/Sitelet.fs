@@ -138,7 +138,7 @@ module Sitelet =
             Router = IRouter.Embed embed unembed sitelet.Router
             Controller = fun ctx a ->
                 match unembed a with
-                | Some ea -> sitelet.Controller (embed ctx) ea
+                | Some ea -> sitelet.Controller ctx ea
                 | None -> failwith "Invalid endpoint in Sitelet.Embed"
         }
 
@@ -298,7 +298,7 @@ type SiteletExtensions =
         Sitelet.Unbox<'T> sitelet
 
     [<Extension>]
-    static member MapContent (sitelet: Sitelet<obj>, f: Func<Task<obj>, obj>) =
+    static member MapContent (sitelet: Sitelet<obj>, f: Func<obj, obj>) =
         { sitelet with
             Controller = fun ctx ep ->
                 (ep |> sitelet.Controller ctx

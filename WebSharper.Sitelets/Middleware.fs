@@ -23,38 +23,43 @@ open System
 open System.IO
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.Mvc
+open Microsoft.AspNetCore.Routing
+open Microsoft.AspNetCore.Mvc.Abstractions
+open System.Runtime.CompilerServices
+open Microsoft.AspNetCore.Builder
 
 module Middleware =
-    let private writeResponseAsync (resp: HttpResponse) (out: HttpResponse) : Async<unit> =
-        async {
-            use memStr = new MemoryStream()
-            do
-                out.StatusCode <- resp.StatusCode
-                for h in resp.Headers do
-                    out.Headers.Add(h.Key, h.Value)
-                resp.Body.CopyToAsync(memStr) |> Async.AwaitTask |> ignore
-                memStr.Seek(0L, SeekOrigin.Begin) |> ignore
-            do! memStr.CopyToAsync(out.Body) |> Async.AwaitTask    
-        }
 
-    let Middleware (options: WebSharperOptions) =
+    let Middleware (siteletOpt: option<Sitelet<obj>>) =
         let sitelet =
-            match options.Sitelet with
+            match siteletOpt with
             | Some s -> Some s
-            | None -> Loading.DiscoverSitelet options.Assemblies
+            | None -> Loading.DiscoverSitelet ()
         match sitelet with
         | None ->
             Func<_,_,_>(fun (_: HttpContext) (next: Func<Task>) -> next.Invoke())
         | Some sitelet ->
             Func<_,_,_>(fun (httpCtx: HttpContext) (next: Func<Task>) ->
-                let ctx = Context.GetOrMake httpCtx options
-                match sitelet.Router.Route ctx.Request with
+                let req = httpCtx.Request
+                match sitelet.Router.Route req with
                 | Some endpoint ->
                     async {
                         let content = sitelet.Controller httpCtx endpoint
-                        let! response = Content.ToResponse content ctx
-                        do! writeResponseAsync response httpCtx.Response
+                        match content with
+                        | :? string as stringContent ->
+                            httpCtx.Response.StatusCode <- StatusCodes.Status200OK
+                            do! httpCtx.Response.WriteAsync(stringContent) |> Async.AwaitTask    
+                        | :? IActionResult as actionResult ->
+                            let actionCtx = ActionContext(httpCtx, RouteData(), ActionDescriptor())
+                            do! actionResult.ExecuteResultAsync(actionCtx) |> Async.AwaitTask
                     }
                     |> Async.StartAsTask :> Task
                 | None -> next.Invoke()
             )
+
+[<Extension>]
+type ApplicationBuilderExtensions =
+    [<Extension>]
+    static member UseSitelets(this: IApplicationBuilder, ?sitelet: Sitelet<'T>) =
+        this.Use(Middleware.Middleware (sitelet |> Option.map (fun s -> Sitelet.Box s)))

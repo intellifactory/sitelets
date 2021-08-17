@@ -372,8 +372,8 @@ type Route =
                 | q -> s.Substring(0, q)
         {
             Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-            QueryArgs = HttpHelpers.CollectionToMap r.Query // HttpTODO
-            FormData = HttpHelpers.CollectionToMap r.Form // HttpTODO
+            QueryArgs = HttpHelpers.CollectionToMap r.Query
+            FormData = HttpHelpers.CollectionToMap r.Form
             Method = Some (r.Method.ToString())
             Body = lazy r.Body.ToString()
         }

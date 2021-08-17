@@ -287,9 +287,9 @@ module internal ServerRouting =
 
     and classRouter (t: Type) : InferredRouter =
         let rec getClassAnnotation td : Annotation =
-            match parsedClassEndpoints.TryFind(td) with // TODO
-            | Some ep -> ep
-            | None ->
+            match parsedClassEndpoints.TryGetValue(td) with // TODO
+            | true, ep -> ep
+            | _ ->
                 let b =
                     let b = t.BaseType
                     if b.FullName = "System.Object" then None else Some (getClassAnnotation b)

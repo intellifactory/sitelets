@@ -46,8 +46,8 @@ module internal ServerInferredOperators =
     type MRoute =
         {
             mutable Segments : list<string>
-            QueryArgs : IQueryCollection
-            FormData : IFormCollection // HttpTODO
+            QueryArgs : Map<string, string>
+            FormData : Map<string, string>
             Method : option<string> 
             Body : Lazy<string>
             mutable Result: ParseResult 
@@ -56,8 +56,8 @@ module internal ServerInferredOperators =
         static member Empty =
             {
                 Segments = []
-                QueryArgs = null // HttpTODO
-                FormData = null // HttpTODO
+                QueryArgs = Map.empty
+                FormData = Map.empty
                 Method = None
                 Body = Lazy.CreateFromValue null
                 Result = StrictMode
@@ -66,8 +66,8 @@ module internal ServerInferredOperators =
         static member OfPath(path: Route) = // HttpTODO
             {
                 Segments = path.Segments
-                QueryArgs = HttpHelpers.CollectionFromMap path.QueryArgs
-                FormData = HttpHelpers.CollectionFromMap path.FormData
+                QueryArgs = path.QueryArgs
+                FormData = path.FormData
                 Method = path.Method
                 Body = path.Body
                 Result = StrictMode
@@ -76,8 +76,8 @@ module internal ServerInferredOperators =
         member this.ToPath() = // HttpTODO
             {
                 Segments = this.Segments
-                QueryArgs = HttpHelpers.CollectionToMap this.QueryArgs
-                FormData = HttpHelpers.CollectionToMap this.FormData
+                QueryArgs = this.QueryArgs
+                FormData = this.FormData
                 Method = this.Method
                 Body = this.Body
             } : Route
@@ -94,8 +94,8 @@ module internal ServerInferredOperators =
                     | q -> s.Substring(0, q)
             {
                 Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-                QueryArgs = r.Query
-                FormData = r.Form
+                QueryArgs = r.Query |> HttpHelpers.CollectionToMap
+                FormData = r.Form |> HttpHelpers.CollectionToMap
                 Method = Some (r.Method.ToString())
                 Body = lazy r.Body.ToString()
                 Result = StrictMode
@@ -446,9 +446,9 @@ module internal ServerInferredOperators =
     let IQuery key (item: InferredRouter) : InferredRouter = // HttpTODO
         {
             IParse = fun path ->
-                match path.QueryArgs.[key] with
-                | None -> error (MissingQueryParameter key) path 
-                | Some q ->
+                match path.QueryArgs.TryGetValue(key) with
+                | false, _ -> error (MissingQueryParameter key) path 
+                | true, q ->
                     item.IParse { MRoute.Empty with Segments = [ q ] }
             IWrite = fun (w, value) ->
                 let q = 
@@ -479,9 +479,9 @@ module internal ServerInferredOperators =
             :?> IOptionConverter
         {
             IParse = fun path ->
-                match path.QueryArgs.[key] with
-                | None -> Some null
-                | Some q ->
+                match path.QueryArgs.TryGetValue(key) with
+                | false, _ -> Some null
+                | true, q ->
                     item.IParse { MRoute.Empty with Segments = [ q ] }
                     |> Option.map (fun v ->
                         converter.Some v
@@ -506,9 +506,9 @@ module internal ServerInferredOperators =
     let IQueryNullable key (item: InferredRouter) : InferredRouter = // HttpTODO
         {
             IParse = fun path ->
-                match path.QueryArgs.[key] with
-                | None -> Some null
-                | Some q ->
+                match path.QueryArgs.TryGetValue(key) with
+                | false,  _ -> Some null
+                | true, q ->
                     item.IParse { MRoute.Empty with Segments = [ q ] }
             IWrite = fun (w, value) ->
                 match value with

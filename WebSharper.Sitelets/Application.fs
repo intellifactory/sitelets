@@ -32,22 +32,22 @@ open Microsoft.AspNetCore.Http
 [<Class>]
 type Application =
 
-    static member MultiPage f = Sitelet.Infer f
+    static member BaseMultiPage f = Sitelet.Infer f
 
-    static member SinglePage (f: HttpContext -> obj) =
+    static member BaseSinglePage (f: HttpContext -> obj) =
         {
             Router = Router.Single SPA.EndPoint.Home "/"
             Controller = fun ctx _ -> f ctx
         }
 
     static member SinglePage (f: Func<HttpContext, obj>) : Sitelet<SPA.EndPoint> =
-        Application.SinglePage (fun ctx -> f.Invoke ctx)
+        Application.BaseSinglePage (fun ctx -> f.Invoke ctx)
 
     static member MultiPage (f: Func<HttpContext, 'EndPoint, obj>) : Sitelet<'EndPoint> =
-        Application.MultiPage (fun ctx ep -> f.Invoke(ctx, ep))
+        Application.BaseMultiPage (fun ctx ep -> f.Invoke(ctx, ep))
 
     static member Text (f: Func<HttpContext, string>) : Sitelet<SPA.EndPoint> =
-        Application.SinglePage (fun ctx ->
+        Application.BaseSinglePage (fun ctx ->
             do
                 ctx.Response.WriteAsync(f.Invoke ctx)
                 |> Async.AwaitTask |> Async.RunSynchronously

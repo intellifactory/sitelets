@@ -63,11 +63,13 @@ let private TryLoadSiteB (assembly: Assembly) =
         )
     )
 
+open System.Reflection
+
 /// Try to find a sitelet defined in one of these assemblies.
-let DiscoverSitelet(assemblies: seq<Assembly>) =
-    let assemblies = Seq.cache assemblies
-    match Seq.tryPick TryLoadSiteA assemblies with
+let DiscoverSitelet() =
+    let asm = Assembly.GetEntryAssembly()
+    match TryLoadSiteA asm with
     | Some (s, _) -> Some s
     | _ ->
-        Seq.tryPick TryLoadSiteB assemblies
+        TryLoadSiteB asm
         |> Option.map fst       

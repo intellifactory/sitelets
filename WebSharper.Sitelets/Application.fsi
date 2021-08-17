@@ -31,10 +31,10 @@ open Microsoft.AspNetCore.Http
 [<Class>]
 type Application =
     /// Create a multi-page application.
-    static member MultiPage : (HttpContext -> 'EndPoint -> obj) -> Sitelet<'EndPoint>
+    static member BaseMultiPage : (HttpContext -> 'EndPoint -> obj) -> Sitelet<'EndPoint>
 
     /// Create a single-page HTML application.
-    static member SinglePage : (HttpContext -> obj) -> Sitelet<SPA.EndPoint>
+    static member BaseSinglePage : (HttpContext -> obj) -> Sitelet<SPA.EndPoint>
 
     /// Create a single-page application that returns text.
     // static member Text : (Context<SPA.EndPoint> -> string) -> Sitelet<SPA.EndPoint>
