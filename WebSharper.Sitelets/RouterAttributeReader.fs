@@ -23,7 +23,6 @@ module internal Sitelets.RouterInferCommon
 open System
 open System.Collections.Generic
 
-module M = WebSharper.Core.Metadata
 module P = FSharp.Quotations.Patterns
 
 type Annotation =

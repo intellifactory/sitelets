@@ -27,7 +27,6 @@ open System.Reflection
 open Sitelets.RouterInferCommon
 open Sitelets.ServerInferredOperators
 
-module M = WebSharper.Core.Metadata
 module P = FSharp.Quotations.Patterns
 
 module internal ServerRouting =

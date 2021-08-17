@@ -20,44 +20,35 @@
 
 namespace Sitelets
 
-open Sitelets
-
 module SPA =
     type EndPoint =
-        | [<EndPoint "/">] Home
-
-namespace WebSharper
+        | Home
 
 open System
 open System.Runtime.CompilerServices
 open System.Threading.Tasks
-open Sitelets
+open Microsoft.AspNetCore.Http
 
 [<Class>]
 type Application =
 
     static member MultiPage f = Sitelet.Infer f
 
-    static member SinglePage (f: Context<SPA.EndPoint> -> Async<obj>) =
+    static member SinglePage (f: HttpContext -> obj) =
         {
             Router = Router.Single SPA.EndPoint.Home "/"
-            Controller =
-                { Handle = fun SPA.EndPoint.Home ->
-                    Content.CustomContentAsync <| fun ctx -> async {
-                        let! x = f ctx
-                        return! Content.ToResponse x ctx
-                    }
-                }
+            Controller = fun ctx _ -> f ctx
         }
 
-    // static member Text (t: Context<SPA.EndPoint> -> string) : Sitelet<SPA.EndPoint> =
-    //     Application.SinglePage (fun context -> Content.Text (t context))
+    static member SinglePage (f: Func<HttpContext, obj>) : Sitelet<SPA.EndPoint> =
+        Application.SinglePage (fun ctx -> f.Invoke ctx)
 
-    static member SinglePage (f: Func<Context<SPA.EndPoint>, Task<obj>>) : Sitelet<SPA.EndPoint> =
-        Application.SinglePage (fun ctx -> f.Invoke ctx |> Async.AwaitTask)
+    static member MultiPage (f: Func<HttpContext, 'EndPoint, obj>) : Sitelet<'EndPoint> =
+        Application.MultiPage (fun ctx ep -> f.Invoke(ctx, ep))
 
-    static member MultiPage (f: Func<Context<'EndPoint>, 'EndPoint, Task<obj>>) : Sitelet<'EndPoint> =
-        Application.MultiPage (fun ctx ep -> f.Invoke(ctx, ep) |> Async.AwaitTask)
-
-    static member Text (f: Func<Context<SPA.EndPoint>, string>) : Sitelet<SPA.EndPoint> =
-        Application.SinglePage (fun context -> Content.Text (f.Invoke context))
+    static member Text (f: Func<HttpContext, string>) : Sitelet<SPA.EndPoint> =
+        Application.SinglePage (fun ctx ->
+            do
+                ctx.Response.WriteAsync(f.Invoke ctx)
+                |> Async.AwaitTask |> Async.RunSynchronously
+            ( f.Invoke ctx):> obj)

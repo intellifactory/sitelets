@@ -23,29 +23,27 @@ namespace Sitelets
 module SPA =
     type EndPoint
 
-namespace Sitelets
-
 open System
 open System.Runtime.CompilerServices
 open System.Threading.Tasks
-open Sitelets
+open Microsoft.AspNetCore.Http
 
 [<Class>]
 type Application =
     /// Create a multi-page application.
-    static member MultiPage : (Context<'EndPoint> -> 'EndPoint -> Async<obj>) -> Sitelet<'EndPoint>
+    static member MultiPage : (HttpContext -> 'EndPoint -> obj) -> Sitelet<'EndPoint>
 
     /// Create a single-page HTML application.
-    static member SinglePage : (Context<SPA.EndPoint> -> Async<obj>) -> Sitelet<SPA.EndPoint>
+    static member SinglePage : (HttpContext -> obj) -> Sitelet<SPA.EndPoint>
 
     /// Create a single-page application that returns text.
     // static member Text : (Context<SPA.EndPoint> -> string) -> Sitelet<SPA.EndPoint>
 
     /// Create a multi-page application.
-    static member MultiPage : Func<Context<'EndPoint>, 'EndPoint, Task<obj>> -> Sitelet<'EndPoint>
+    static member MultiPage : Func<HttpContext, 'EndPoint, obj> -> Sitelet<'EndPoint>
 
     /// Create a single-page HTML application.
-    static member SinglePage : Func<Context<SPA.EndPoint>, Task<obj>> -> Sitelet<SPA.EndPoint>
+    static member SinglePage : Func<HttpContext, obj> -> Sitelet<SPA.EndPoint>
 
     /// Create a single-page application that returns text.
-    static member Text : Func<Context<SPA.EndPoint>, string> -> Sitelet<SPA.EndPoint>
+    static member Text : Func<HttpContext, string> -> Sitelet<SPA.EndPoint>

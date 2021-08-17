@@ -23,6 +23,7 @@ namespace Sitelets
 open FSharp.Reflection
 open System.Collections.Generic
 open System.Text
+open System.Text.Json
 open System.Globalization
 
 module internal ServerInferredOperators =
@@ -557,7 +558,7 @@ module internal ServerInferredOperators =
                 match path.Body.Value with
                 | null -> error InvalidJson path
                 | b ->
-                    try Some (Json.Deserialize<'T> b |> box)
+                    try Some (JsonSerializer.Deserialize<'T> b |> box)
                     with _ -> error InvalidJson path
             IWrite = ignore
             IExplicitMethods = Set.empty
