@@ -43,3 +43,18 @@ module HttpHelpers =
         |> Seq.map (fun (KeyValue(k,v)) ->
             KeyValuePair (k, Microsoft.Extensions.Primitives.StringValues v)
         )
+
+    let ToQuery (req: HttpRequest) : Map<string, string> =
+        let returnMap : Map<string, string> = Map.empty
+        for KeyValue(k, v) in req.Query do
+            returnMap.Add (k, v.ToString()) |> ignore
+        returnMap
+
+    let ToForm (req: HttpRequest) : Map<string, string> =
+        if req.HasFormContentType then
+            let returnMap : Map<string, string> = Map.empty
+            for KeyValue(k, v) in req.Query do
+                returnMap.Add (k, v.ToString()) |> ignore
+            returnMap
+        else
+            Map.empty

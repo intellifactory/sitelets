@@ -83,7 +83,14 @@ module internal ServerInferredOperators =
             } : Route
 
         static member FromWSRequest(r: HttpRequest) = // HttpTODO
-            let u = r.PathBase.ToUriComponent() |> System.Uri
+            let u =
+                System.UriBuilder(
+                    r.Scheme,
+                    r.Host.Host,
+                    r.Host.Port.GetValueOrDefault(-1),
+                    r.Path.ToString(),
+                    r.QueryString.ToString()
+                ).Uri
             let p =
                 if u.IsAbsoluteUri then 
                     u.AbsolutePath 
@@ -94,9 +101,9 @@ module internal ServerInferredOperators =
                     | q -> s.Substring(0, q)
             {
                 Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-                QueryArgs = r.Query |> HttpHelpers.CollectionToMap
-                FormData = r.Form |> HttpHelpers.CollectionToMap
-                Method = Some (r.Method.ToString())
+                QueryArgs = HttpHelpers.ToQuery r
+                FormData = HttpHelpers.ToForm r
+                Method = Some (r.Method)
                 Body = lazy r.Body.ToString()
                 Result = StrictMode
             }

@@ -5,6 +5,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="SiteletAttributes.fs" />
     <Compile Include="Extensions.fs" />
     <Compile Include="Http.fs" />
     <Compile Include="Router.fs" />

@@ -54,28 +54,6 @@ module Views =
         ] |> layout
 
 // ---------------------------------
-// Sitelet Test
-// ---------------------------------
-
-type Endpoint =
-    | Str of string
-    | ActionResult of IActionResult
-    | T of Task<obj>
-    | E of IEnumerable<obj>
-
-let mysitelet = 
-    Sitelet.Sum [
-        Sitelet.Content "/sitelets" (Endpoint.Str "") (fun ctx -> box "Hello World")
-        //Sitelet.Infer (fun ctx e ->
-        //    match e with
-        //    | Str s -> box s
-        //    | ActionResult a -> box a
-        //    | T t -> box t
-        //    | E en -> box en
-        //)
-    ]
-
-// ---------------------------------
 // Web app
 // ---------------------------------
 
@@ -84,6 +62,44 @@ let indexHandler (name : string) =
     let model     = { Text = greetings }
     let view      = Views.index model
     htmlView view
+
+// ---------------------------------
+// Sitelet Test
+// ---------------------------------
+
+type Endpoint =
+    | [<EndPoint "GET /echo">] Str of string
+    | [<EndPoint "GET /actionctx">] ActionResult
+    | [<EndPoint "GET /task/str">] Task1
+    | [<EndPoint "GET /task/actionctx">] Task2
+    | [<EndPoint "GET /task/enumerable">] Task3
+    | [<EndPoint "GET /enum">] Enumerable1
+    | [<EndPoint "GET /enum/async">] Enumerable2
+    | Test1
+    | Test2
+
+let mysitelet = 
+    Sitelet.Sum [
+        Sitelet.Content "/sitelets" Test1 (fun ctx -> box "Hello World")
+        Sitelet.Content "/sitelets2" Test2 (fun ctx -> box "Hello World2")
+        Sitelet.Infer (fun ctx -> function
+            | Str s -> box s
+            | ActionResult -> box Ok
+            | Task1 -> box <| Task.FromResult "task1"
+            | Task2 ->
+                let contentRes = ContentResult(Content = "Hello World")
+                Task.FromResult contentRes
+                |> box
+            | Task3 ->
+                let e = Dictionary<string, string>()
+                e.Add("hihi", "haha")
+                Task.FromResult e
+                |> box
+            | Enumerable1 -> box "haha"
+            | Enumerable2 -> box ""
+            | _ -> failwith "error"
+        )
+    ]
 
 let webApp =
     choose [
@@ -131,6 +147,7 @@ let configureApp (app : IApplicationBuilder) =
 let configureServices (services : IServiceCollection) =
     services.AddCors()    |> ignore
     services.AddGiraffe() |> ignore
+    services.AddMvc()     |> ignore
 
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole()

@@ -124,7 +124,7 @@ type AttributeReader<'A>() =
             this.GetCtorParamArgs(attr) |> Array.iter (set.Add >> ignore)
         for attr in attrs do
             match this.GetAssemblyName attr with
-            | "WebSharper.Core" ->
+            | "Sitelets" ->
                 match this.GetName attr with
                 | "EndPointAttribute" ->
                     this.GetCtorParamArgsOrPair(attr) |> Array.iter ep.Add

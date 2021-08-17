@@ -38,9 +38,9 @@ module SiteletHelper =
     let sitelet (sl : Sitelet<'T>) : SiteletHttpHandler =
         fun (httpFunc: SiteletHttpFunc) ->
             let handleSitelet (httpCtx: HttpContext) =
-                let rec contentHelper (endpoint: 'T) =
+                let rec contentHelper (content: obj) =
                     async {
-                        let content = sl.Controller httpCtx endpoint
+                        
                         match content with
                         | :? string as stringContent ->
                             httpCtx.Response.StatusCode <- StatusCodes.Status200OK
@@ -50,22 +50,25 @@ module SiteletHelper =
                             let actionCtx = ActionContext(httpCtx, RouteData(), ActionDescriptor())
                             do! actionResult.ExecuteResultAsync(actionCtx) |> Async.AwaitTask
                             return None
-                        | :? Task<_> as t ->
-                            let! result = t |> Async.AwaitTask
-                            return! contentHelper result
                         | _ ->
-                            httpCtx.Response.StatusCode <- StatusCodes.Status200OK
-                            //do! httpCtx.Response.WriteAsJsonAsync(content) |> Async.AwaitTask
-                            use s = new System.IO.MemoryStream()
-                            do! httpCtx.Response.Body.CopyToAsync(s) |> Async.AwaitTask
-                            let json = s.ToString()
-                            do! httpCtx.Response.WriteAsync(json) |> Async.AwaitTask
-                            return None
+                            let contentType = content.GetType()
+                            if contentType.IsGenericType && contentType.GetGenericTypeDefinition() = typedefof<Task<_>> then
+                                let contentTask = content :?> Task
+                                do! contentTask |> Async.AwaitTask
+                                let contentResult =
+                                    let resultGetter = contentType.GetProperty("Result")
+                                    resultGetter.GetMethod.Invoke(contentTask, [||])
+                                return! contentHelper contentResult
+                            else
+                                httpCtx.Response.StatusCode <- StatusCodes.Status200OK
+                                do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content) |> Async.AwaitTask
+                                return None
                     }
                 let req = httpCtx.Request
                 match sl.Router.Route req with
                 | Some endpoint ->
-                    contentHelper endpoint
+                    let content = sl.Controller httpCtx endpoint
+                    contentHelper content
                     |> Async.StartAsTask
                 | None -> Task.FromResult (Some httpCtx)
                 
