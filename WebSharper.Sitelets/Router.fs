@@ -24,6 +24,7 @@ open System.Collections.Generic
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 open System.Text
+open Microsoft.AspNetCore.Http
 
 #nowarn "64" // type parameter renaming warnings 
 
@@ -359,8 +360,8 @@ type Route =
             QueryArgs = q
         }
 
-    static member FromRequest(r: Http.Request) =
-        let u = r.Uri
+    static member FromRequest(r: HttpRequest) =
+        let u = r.PathBase.ToUriComponent() |> System.Uri
         let p =
             if u.IsAbsoluteUri then 
                 u.AbsolutePath 
@@ -371,10 +372,10 @@ type Route =
                 | q -> s.Substring(0, q)
         {
             Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-            QueryArgs = r.Get.ToList() |> Map.ofList
-            FormData = r.Post.ToList() |> Map.ofList
+            QueryArgs = r.Get.ToList() |> Map.ofList // HttpTODO
+            FormData = r.Post.ToList() |> Map.ofList // HttpTODO
             Method = Some (r.Method.ToString())
-            Body = lazy r.BodyText
+            Body = lazy r.BodyText // HttpTODO
         }
 
     static member FromHash(path: string, ?strict: bool) =
@@ -402,7 +403,7 @@ module internal List =
         | _ -> None
 
 type IRouter<'T> =
-    abstract Route : Http.Request -> option<'T>
+    abstract Route : HttpRequest -> option<'T>
     abstract Link : 'T -> option<System.Uri>
 
 type Router =
@@ -519,7 +520,7 @@ module Router =
         }
 
     /// Creates a fully customized router.
-    let New (route: Http.Request -> option<'T>) (link: 'T -> option<System.Uri>) =
+    let New (route: HttpRequest -> option<'T>) (link: 'T -> option<System.Uri>) =
         { new IRouter<'T> with
             member this.Route req = route req
             member this.Link e = link e
@@ -894,7 +895,7 @@ type Router with
     static member Empty<'T when 'T: equality>() =
         Router.Empty<'T>
 
-    static member New(route: System.Func<Http.Request, 'T>, link: System.Func<'T, System.Uri>) =
+    static member New(route: System.Func<HttpRequest, 'T>, link: System.Func<'T, System.Uri>) =
         Router.New (route.Invoke >> Option.ofObj) (link.Invoke >> Option.ofObj)
 
     static member Method(method:string) =
@@ -1027,10 +1028,10 @@ module IRouter =
                 makeUri (joinWithSlash prefix (path loc) |> trimFinalSlash)
         { new IRouter<'T> with
             member this.Route req =
-                let builder = UriBuilder req.Uri
+                let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
                 if builder.Path.StartsWith prefix then
                     builder.Path <- builder.Path.Substring prefix.Length
-                    router.Route (req.WithUri(builder.Uri))
+                    router.Route (req.WithUri(builder.Uri)) // HttpTODO
                 else
                     None
             member this.Link e = router.Link e |> Option.map shift

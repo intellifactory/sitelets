@@ -287,7 +287,7 @@ module internal ServerRouting =
 
     and classRouter (t: Type) : InferredRouter =
         let rec getClassAnnotation td : Annotation =
-            match parsedClassEndpoints.TryFind(td) with
+            match parsedClassEndpoints.TryFind(td) with // TODO
             | Some ep -> ep
             | None ->
                 let b =

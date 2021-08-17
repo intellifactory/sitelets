@@ -20,9 +20,10 @@
 
 namespace Sitelets
 
-module UrlHelpers =
+module UrlHelpers = // HttpTODO
     open System
     open System.Text.RegularExpressions
+    open Microsoft.AspNetCore.Http
 
     module Internals =
         let matchToken pattern s : (string * string) option =
@@ -154,25 +155,24 @@ module UrlHelpers =
         |> List.ofArray
         |> Some
 
-    let (|DELETE|GET|OPTIONS|POST|PUT|TRACE|SPECIAL|) (req: Http.Request) =
+    let (|DELETE|GET|OPTIONS|POST|PUT|TRACE|SPECIAL|) (req: HttpRequest) =
         let allParams () = req.Get.ToList () @ req.Post.ToList ()
+                
         match req.Method with
-        | Http.Method.Delete ->
-            DELETE (allParams (), req.Uri)
-        | Http.Method.Get
-        | Http.Method.Custom "GET" ->
-            GET (req.Get.ToList (), req.Uri)
-        | Http.Method.Options ->
-            OPTIONS (allParams (), req.Uri)
-        | Http.Method.Post ->
-            POST (req.Post.ToList (), req.Uri)
-        | Http.Method.Put ->
-            PUT (allParams (), req.Uri)
-        | Http.Method.Trace ->
-            TRACE (allParams (), req.Uri)
+        | "DELETE" ->
+            DELETE (allParams (), req.PathBase.ToUriComponent())
+        | "GET"
+            GET (req.Get.ToList (), req.PathBase.ToUriComponent())
+        | "OPTIONS" ->
+            OPTIONS (allParams (), req.PathBase.ToUriComponent())
+        | "POST" ->
+            POST (req.Post.ToList (), req.PathBase.ToUriComponent())
+        | "PUT" ->
+            PUT (allParams (), req.PathBase.ToUriComponent())
+        | "TRACE" ->
+            TRACE (allParams (), req.PathBase.ToUriComponent())
         // TODO: Revise.  Unfortunately, F# active patterns only allow up to 7 cases.
-        | Http.Method.Head
-        | Http.Method.Connect
-        | Http.Method.Custom _ ->
-            SPECIAL (req.Method, allParams, req.Uri)
+        | "HEAD"
+        | "CONNECT" ->
+            SPECIAL (req.Method, allParams, req.PathBase.ToUriComponent())
 

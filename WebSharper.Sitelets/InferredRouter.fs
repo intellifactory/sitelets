@@ -46,8 +46,8 @@ module internal ServerInferredOperators =
     type MRoute =
         {
             mutable Segments : list<string>
-            QueryArgs : Http.ParameterCollection
-            FormData : Http.ParameterCollection
+            QueryArgs : Http.ParameterCollection // HttpTODO
+            FormData : Http.ParameterCollection // HttpTODO
             Method : option<string> 
             Body : Lazy<string>
             mutable Result: ParseResult 
@@ -56,14 +56,14 @@ module internal ServerInferredOperators =
         static member Empty =
             {
                 Segments = []
-                QueryArgs = Http.EmptyParameters
-                FormData = Http.EmptyParameters
+                QueryArgs = Http.EmptyParameters // HttpTODO
+                FormData = Http.EmptyParameters // HttpTODO
                 Method = None
                 Body = Lazy.CreateFromValue null
                 Result = StrictMode
             }
 
-        static member OfPath(path: Route) =
+        static member OfPath(path: Route) = // HttpTODO
             {
                 Segments = path.Segments
                 QueryArgs = Http.ParametersFromMap(path.QueryArgs)
@@ -73,7 +73,7 @@ module internal ServerInferredOperators =
                 Result = StrictMode
             }
 
-        member this.ToPath() =
+        member this.ToPath() = // HttpTODO
             {
                 Segments = this.Segments
                 QueryArgs = this.QueryArgs.ToList() |> Map.ofList
@@ -82,7 +82,7 @@ module internal ServerInferredOperators =
                 Body = this.Body
             } : Route
 
-        static member FromWSRequest(r: Http.Request) =
+        static member FromWSRequest(r: Http.Request) = // HttpTODO
             let u = r.Uri
             let p =
                 if u.IsAbsoluteUri then 
@@ -443,7 +443,7 @@ module internal ServerInferredOperators =
             IExplicitMethods = Set.add "OPTIONS" item.IExplicitMethods
         }
 
-    let IQuery key (item: InferredRouter) : InferredRouter =
+    let IQuery key (item: InferredRouter) : InferredRouter = // HttpTODO
         {
             IParse = fun path ->
                 match path.QueryArgs.[key] with
@@ -473,7 +473,7 @@ module internal ServerInferredOperators =
             member this.Get (o: obj) = unbox<'T option> o |> Option.map box
             member this.Some (x: obj) = Some (unbox<'T> x) |> box
 
-    let IQueryOption (itemType: System.Type) key (item: InferredRouter) : InferredRouter =
+    let IQueryOption (itemType: System.Type) key (item: InferredRouter) : InferredRouter = // HttpTODO
         let converter = 
             System.Activator.CreateInstance(typedefof<OptionConverter<_>>.MakeGenericType(itemType))
             :?> IOptionConverter
@@ -503,7 +503,7 @@ module internal ServerInferredOperators =
             IExplicitMethods = Set.empty
         }
 
-    let IQueryNullable key (item: InferredRouter) : InferredRouter =
+    let IQueryNullable key (item: InferredRouter) : InferredRouter = // HttpTODO
         {
             IParse = fun path ->
                 match path.QueryArgs.[key] with

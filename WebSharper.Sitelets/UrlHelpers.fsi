@@ -21,6 +21,7 @@
 namespace Sitelets
 
 open System
+open Microsoft.AspNetCore.Http
 
 /// Helpers to parse requests in a custom Sitelet router.
 module UrlHelpers =
@@ -87,11 +88,11 @@ module UrlHelpers =
     /// Extract the URL and parameters from an HTTP request
     /// that uses the given method.
     val (|DELETE|GET|OPTIONS|POST|PUT|TRACE|SPECIAL|) :
-        Http.Request ->
+        HttpRequest ->
         Choice< (string * string) list * Uri,
                 (string * string) list * Uri,
                 (string * string) list * Uri,
                 (string * string) list * Uri,
                 (string * string) list * Uri,
                 (string * string) list * Uri,
-                Http.Method * (unit -> (string * string) list) * Uri >
+                Http.Method * (unit -> (string * string) list) * Uri > // HttpTODO
