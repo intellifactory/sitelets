@@ -23,6 +23,7 @@ namespace Sitelets
 open System
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
+open Microsoft.AspNetCore.Http
 
 /// Represents a self-contained website parameterized by the type of actions.
 /// A sitelet combines a router, which is used to match incoming requests to
@@ -31,7 +32,7 @@ open System.Runtime.CompilerServices
 type Sitelet<'T when 'T : equality> =
     {
         Router : IRouter<'T>
-        Controller : Controller<'T>
+        Controller : HttpContext -> 'T -> obj
     }
 
     /// Combines two sitelets, with the leftmost taking precedence.
@@ -62,7 +63,7 @@ module Sitelet =
     val Empty<'T when 'T : equality> : Sitelet<'T>
 
     /// Creates a WebSharper.Sitelet using the given router and handler function.
-    val New<'T when 'T : equality> : router: IRouter<'T> -> handle: (Context<'T> -> 'T -> Async<obj>) -> Sitelet<'T>
+    val New<'T when 'T : equality> : router: IRouter<'T> -> handle: (HttpContext -> 'T -> obj) -> Sitelet<'T>
 
     /// Represents filters for protecting sitelets.
     type Filter<'T> =
@@ -82,7 +83,7 @@ module Sitelet =
     val Content<'T when 'T : equality> :
         location: string ->
         endpoint: 'T ->
-        cnt: (Context<'T> -> Async<obj>) ->
+        cnt: (HttpContext -> obj) ->
         Sitelet<'T>
 
     /// Maps over the sitelet endpoint type. Requires a bijection.
@@ -91,7 +92,7 @@ module Sitelet =
 
     /// Maps over the served sitelet content.
     val MapContent<'T when 'T : equality> :
-        (Async<obj> -> Async<obj>) -> Sitelet<'T> -> Sitelet<'T>
+        (obj -> obj) -> Sitelet<'T> -> Sitelet<'T>
 
     /// Maps over the sitelet endpoint type with only an injection.
     val Embed<'T1, 'T2 when 'T1 : equality and 'T2 : equality> :
@@ -139,29 +140,26 @@ module Sitelet =
         sitelet: Sitelet<obj> -> Sitelet<'T>
 
     /// Constructs a sitelet with an inferred router and a given controller function.
-    val Infer<'T when 'T : equality> : (Context<'T> -> 'T -> Async<obj>) -> Sitelet<'T>
+    val Infer<'T when 'T : equality> : (HttpContext -> 'T -> obj) -> Sitelet<'T>
 
     /// Constructs a sitelet with an inferred router and a given controller function.
     val InferWithCustomErrors<'T when 'T : equality>
-        : (Context<'T> -> ParseRequestResult<'T> -> Async<pbj>)
+        : (HttpContext -> ParseRequestResult<'T> -> obj)
         -> Sitelet<ParseRequestResult<'T>>
 
     /// Constructs a partial sitelet with an inferred router and a given controller function.
     val InferPartial<'T1, 'T2 when 'T1 : equality and 'T2 : equality> :
-        ('T1 -> 'T2) -> ('T2 -> 'T1 option) -> (Context<'T2> -> 'T1 -> Async<obj>) -> Sitelet<'T2>
+        ('T1 -> 'T2) -> ('T2 -> 'T1 option) -> (HttpContext -> 'T1 -> obj) -> Sitelet<'T2>
 
     /// Constructs a partial sitelet with an inferred router and a given controller function.
     /// The actions covered by this sitelet correspond to the given union case.
     val InferPartialInUnion<'T1, 'T2 when 'T1 : equality and 'T2 : equality> :
-        Expr<'T1 -> 'T2> -> (Context<'T2> -> 'T1 -> Async<obj>) -> Sitelet<'T2>
+        Expr<'T1 -> 'T2> -> (HttpContext -> 'T1 -> obj) -> Sitelet<'T2>
 
     /// Applies a mapping function on the Context object whenever a sitelet controller is used.
-    val MapContext : (Context<'T> -> Context<'T>) -> Sitelet<'T> -> Sitelet<'T>
+    val MapContext : (HttpContext -> HttpContext) -> Sitelet<'T> -> Sitelet<'T>
 
-    /// Adds additional environment settings whenever a sitelet controller is used.
-    val WithSettings : seq<string * string> -> Sitelet<'T> -> Sitelet<'T>
-
-type RouteHandler<'T> = delegate of Context<obj> * 'T -> Task<CSharpContent> 
+type RouteHandler<'T> = delegate of HttpContext * 'T -> obj
 
 [<CompiledName "Sitelet"; Class; Sealed>]
 type CSharpSitelet =
@@ -174,7 +172,7 @@ type CSharpSitelet =
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
     /// and serves a single content value at a given location.
-    static member Content<'T when 'T: equality> : location: string * endpoint: 'T * cnt: Func<Context<'T>, Task<obj>> -> Sitelet<'T>
+    static member Content<'T when 'T: equality> : location: string * endpoint: 'T * cnt: Func<HttpContext, obj> -> Sitelet<'T>
         
     /// Combines several sitelets, leftmost taking precedence.
     /// Is equivalent to folding with the choice operator.
@@ -192,7 +190,7 @@ type SiteletExtensions =
 
     /// Maps over the served sitelet content.
     [<Extension>]
-    static member MapContent : sitelet: Sitelet<obj> * f: Func<Task<CSharpContent>, Task<CSharpContent>> -> Sitelet<obj>
+    static member MapContent : sitelet: Sitelet<obj> * f: Func<obj, obj> -> Sitelet<obj>
 
 /// Enables an iterative approach for defining Sitelets.
 /// Chain calls to the With method to add handlers for new paths or endpoint values inferred from the
@@ -204,11 +202,11 @@ type SiteletBuilder =
     new : unit -> SiteletBuilder
 
     /// Add a handler for an inferred endpoint.
-    member With<'T> : Func<Context, 'T, Task<CSharpContent>> -> SiteletBuilder
+    member With<'T> : Func<HttpContext, 'T, obj> -> SiteletBuilder
         when 'T : equality
 
     /// Add a handler for a specific path.
-    member With : string * Func<Context, Task<CSharpContent>> -> SiteletBuilder
+    member With : string * Func<HttpContext, obj> -> SiteletBuilder
 
     /// Get the resulting Sitelet.
     member Install : unit -> Sitelet<obj>

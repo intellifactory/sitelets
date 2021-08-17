@@ -81,7 +81,9 @@ module Sitelet =
             Controller = fun ctx endpoint ->
                 let prot = filter
                 let failure () =
-                    (RedirectResult (prot.LoginRedirect endpoint)) :> obj
+                    let redirEndpoint = prot.LoginRedirect endpoint
+                    let link = ctx.Items.["Sitelets.Link"] |> unbox<'T -> string>
+                    (RedirectResult (link redirEndpoint)) :> obj
                 let loggedIn = 
                     let nameClaim = ctx.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier)
                     if isNull nameClaim then None else Some nameClaim.Value
@@ -126,7 +128,7 @@ module Sitelet =
             Router = IRouter.TryMap f g s.Router
             Controller = fun ctx a ->
                 match g a with
-                | Some ea -> s.Controller ea ((f >> Option.get) ctx) 
+                | Some ea -> s.Controller ctx ea
                 | None -> failwith "Invalid endpoint in Sitelet.Embed"
         }
 
@@ -136,7 +138,7 @@ module Sitelet =
             Router = IRouter.Embed embed unembed sitelet.Router
             Controller = fun ctx a ->
                 match unembed a with
-                | Some ea -> sitelet.Controller ea (embed ctx)
+                | Some ea -> sitelet.Controller (embed ctx) ea
                 | None -> failwith "Invalid endpoint in Sitelet.Embed"
         }
 
@@ -173,11 +175,11 @@ module Sitelet =
         if Seq.isEmpty sitelets then Empty else
             {
                 Router = IRouter.Sum (sitelets |> Seq.map (fun s -> s.Router))
-                Controller = fun endpoint ->
+                Controller = fun ctx endpoint ->
                     sitelets 
                     |> Array.pick (fun s -> 
                         match s.Router.Link endpoint with
-                        | Some _ -> Some (s.Controller endpoint)
+                        | Some _ -> Some (s.Controller ctx endpoint)
                         | None -> None
                     )
             }
