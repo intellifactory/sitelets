@@ -25,6 +25,7 @@ open System.Collections.Generic
 open System.Text
 open System.Text.Json
 open System.Globalization
+open Microsoft.AspNetCore.Http
 
 module internal ServerInferredOperators =
 

@@ -25,17 +25,14 @@ open System.Threading.Tasks
 open Microsoft.AspNetCore.Http
 
 module Middleware =
-    let private writeResponseAsync (resp: Http.Response) (out: HttpResponse) : Async<unit> =
+    let private writeResponseAsync (resp: HttpResponse) (out: HttpResponse) : Async<unit> =
         async {
             use memStr = new MemoryStream()
             do
-                out.StatusCode <- resp.Status.Code
-                for name, hs in resp.Headers |> Seq.groupBy (fun h -> h.Name) do
-                    let values =
-                        [| for h in hs -> h.Value |]
-                        |> Microsoft.Extensions.Primitives.StringValues
-                    out.Headers.Append(name, values)
-                resp.WriteBody(memStr :> Stream)
+                out.StatusCode <- resp.StatusCode
+                for h in resp.Headers do
+                    out.Headers.Add(h.Key, h.Value)
+                resp.Body.CopyToAsync(memStr) |> Async.AwaitTask |> ignore
                 memStr.Seek(0L, SeekOrigin.Begin) |> ignore
             do! memStr.CopyToAsync(out.Body) |> Async.AwaitTask    
         }
@@ -54,7 +51,7 @@ module Middleware =
                 match sitelet.Router.Route ctx.Request with
                 | Some endpoint ->
                     async {
-                        let content = sitelet.Controller.Handle endpoint
+                        let content = sitelet.Controller httpCtx endpoint
                         let! response = Content.ToResponse content ctx
                         do! writeResponseAsync response httpCtx.Response
                     }
