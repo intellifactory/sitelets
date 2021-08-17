@@ -12,7 +12,6 @@
     <Compile Include="RouterAttributeReader.fs" />
     <Compile Include="RouterInfer.Server.fs" />
     <Compile Include="RouterInfer.Client.fs" />
-    <Compile Include="Controller.fs" />
     <Compile Include="Sitelet.fsi" />
     <Compile Include="Sitelet.fs" />
     <Compile Include="Application.fsi" />
