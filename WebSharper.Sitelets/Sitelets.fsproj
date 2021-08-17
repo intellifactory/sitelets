@@ -14,6 +14,7 @@
     <Compile Include="InferRouter.fs" />
     <Compile Include="Sitelet.fsi" />
     <Compile Include="Sitelet.fs" />
+    <Compile Include="SiteletHelper.fs" />
     <Compile Include="Application.fsi" />
     <Compile Include="Application.fs" />
     <Compile Include="Website.fs" />

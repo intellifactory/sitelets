@@ -361,7 +361,15 @@ type Route =
         }
 
     static member FromRequest(r: HttpRequest) =
-        let u = r.PathBase.ToUriComponent() |> System.Uri
+        let u =
+            System.UriBuilder(
+                r.Scheme,
+                r.Host.Host,
+                r.Host.Port.GetValueOrDefault(-1),
+                r.Path.ToString(),
+                r.QueryString.ToString()
+            ).Uri
+
         let p =
             if u.IsAbsoluteUri then 
                 u.AbsolutePath 
@@ -373,7 +381,7 @@ type Route =
         {
             Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
             QueryArgs = HttpHelpers.CollectionToMap r.Query
-            FormData = HttpHelpers.CollectionToMap r.Form
+            FormData = if r.HasFormContentType then HttpHelpers.CollectionToMap r.Form else Map.empty
             Method = Some (r.Method.ToString())
             Body = lazy r.Body.ToString()
         }
