@@ -29,6 +29,22 @@ module HttpHelpers =
     open System.Threading.Tasks
     open Microsoft.AspNetCore.Http
 
+    type ES = Microsoft.Extensions.Primitives.StringValues
+
+    let CollectionToMap<'T when 'T :> IEnumerable<KeyValuePair<string, ES>>> (c: 'T) : Map<string, string> =
+        c
+        |> Seq.map (fun i ->
+            i.Key, i.Value.ToString()
+        )
+        |> Map.ofSeq
+
+    let CollectionFromMap<'T when 'T :> IEnumerable<KeyValuePair<string, ES>>> (m: Map<string, string>) : 'T =
+        m
+        |> Map.toSeq
+        |> Seq.map (fun i ->
+            i |> fst, i |> snd |> Microsoft.Extensions.Primitives.StringValues
+        ) :> IQueryCollection
+
     /// Represents HTTP methods.
     /// See: http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html.
     //type Method =
@@ -272,11 +288,3 @@ module HttpHelpers =
     //        Headers : seq<Header>
     //        WriteBody : Stream -> unit
     //    }
-
-        let BodyTextAsync (resp: HttpResponse)=
-            if isNull resp.Body then
-                    resp.Body <- Task.FromResult ""    
-            else
-                let reader = new System.IO.StreamReader(resp.Body, System.Text.Encoding.UTF8, false, 1024, leaveOpen = true)
-                let bodyText = reader.ReadToEndAsync()
-            bodyText |> Async.AwaitTask

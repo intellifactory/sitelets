@@ -156,23 +156,30 @@ module UrlHelpers = // HttpTODO
         |> Some
 
     let (|DELETE|GET|OPTIONS|POST|PUT|TRACE|SPECIAL|) (req: HttpRequest) =
-        let allParams () = req.Get.ToList () @ req.Post.ToList ()
+        let allParams () =
+            let queryList =
+                HttpHelpers.CollectionToMap req.Query
+                |> Map.toList
+            let formList =
+                HttpHelpers.CollectionToMap req.Form
+                |> Map.toList
+            queryList @ formList
                 
         match req.Method with
         | "DELETE" ->
-            DELETE (allParams (), req.PathBase.ToUriComponent())
-        | "GET"
-            GET (req.Get.ToList (), req.PathBase.ToUriComponent())
+            DELETE (allParams (), req.PathBase.ToUriComponent() |> Uri)
+        | "GET" ->
+            GET (HttpHelpers.CollectionToMap req.Query |> Map.toList, req.PathBase.ToUriComponent() |> Uri)
         | "OPTIONS" ->
-            OPTIONS (allParams (), req.PathBase.ToUriComponent())
+            OPTIONS (allParams (), req.PathBase.ToUriComponent() |> Uri)
         | "POST" ->
-            POST (req.Post.ToList (), req.PathBase.ToUriComponent())
+            POST (HttpHelpers.CollectionToMap req.Form |> Map.toList, req.PathBase.ToUriComponent() |> Uri)
         | "PUT" ->
-            PUT (allParams (), req.PathBase.ToUriComponent())
+            PUT (allParams (), req.PathBase.ToUriComponent() |> Uri)
         | "TRACE" ->
-            TRACE (allParams (), req.PathBase.ToUriComponent())
+            TRACE (allParams (), req.PathBase.ToUriComponent() |> Uri)
         // TODO: Revise.  Unfortunately, F# active patterns only allow up to 7 cases.
         | "HEAD"
         | "CONNECT" ->
-            SPECIAL (req.Method, allParams, req.PathBase.ToUriComponent())
+            SPECIAL (req.Method, allParams, req.PathBase.ToUriComponent() |> Uri)
 

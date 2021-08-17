@@ -46,8 +46,8 @@ module internal ServerInferredOperators =
     type MRoute =
         {
             mutable Segments : list<string>
-            QueryArgs : Http.ParameterCollection // HttpTODO
-            FormData : Http.ParameterCollection // HttpTODO
+            QueryArgs : IQueryCollection
+            FormData : IFormCollection // HttpTODO
             Method : option<string> 
             Body : Lazy<string>
             mutable Result: ParseResult 
@@ -56,8 +56,8 @@ module internal ServerInferredOperators =
         static member Empty =
             {
                 Segments = []
-                QueryArgs = Http.EmptyParameters // HttpTODO
-                FormData = Http.EmptyParameters // HttpTODO
+                QueryArgs = null // HttpTODO
+                FormData = null // HttpTODO
                 Method = None
                 Body = Lazy.CreateFromValue null
                 Result = StrictMode
@@ -66,8 +66,8 @@ module internal ServerInferredOperators =
         static member OfPath(path: Route) = // HttpTODO
             {
                 Segments = path.Segments
-                QueryArgs = Http.ParametersFromMap(path.QueryArgs)
-                FormData = Http.ParametersFromMap(path.FormData)
+                QueryArgs = HttpHelpers.CollectionFromMap path.QueryArgs
+                FormData = HttpHelpers.CollectionFromMap path.FormData
                 Method = path.Method
                 Body = path.Body
                 Result = StrictMode
@@ -76,14 +76,14 @@ module internal ServerInferredOperators =
         member this.ToPath() = // HttpTODO
             {
                 Segments = this.Segments
-                QueryArgs = this.QueryArgs.ToList() |> Map.ofList
-                FormData = this.FormData.ToList() |> Map.ofList
+                QueryArgs = HttpHelpers.CollectionToMap this.QueryArgs
+                FormData = HttpHelpers.CollectionToMap this.FormData
                 Method = this.Method
                 Body = this.Body
             } : Route
 
-        static member FromWSRequest(r: Http.Request) = // HttpTODO
-            let u = r.Uri
+        static member FromWSRequest(r: HttpRequest) = // HttpTODO
+            let u = r.PathBase.ToUriComponent() |> System.Uri
             let p =
                 if u.IsAbsoluteUri then 
                     u.AbsolutePath 
@@ -94,10 +94,10 @@ module internal ServerInferredOperators =
                     | q -> s.Substring(0, q)
             {
                 Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-                QueryArgs = r.Get
-                FormData = r.Post
+                QueryArgs = r.Query
+                FormData = r.Form
                 Method = Some (r.Method.ToString())
-                Body = lazy r.BodyText
+                Body = lazy r.Body.ToString()
                 Result = StrictMode
             }
 

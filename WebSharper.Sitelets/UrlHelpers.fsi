@@ -95,4 +95,4 @@ module UrlHelpers =
                 (string * string) list * Uri,
                 (string * string) list * Uri,
                 (string * string) list * Uri,
-                Http.Method * (unit -> (string * string) list) * Uri > // HttpTODO
+                string * (unit -> (string * string) list) * Uri >

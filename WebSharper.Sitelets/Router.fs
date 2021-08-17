@@ -372,10 +372,10 @@ type Route =
                 | q -> s.Substring(0, q)
         {
             Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-            QueryArgs = r.Get.ToList() |> Map.ofList // HttpTODO
-            FormData = r.Post.ToList() |> Map.ofList // HttpTODO
+            QueryArgs = HttpHelpers.CollectionToMap r.Query // HttpTODO
+            FormData = HttpHelpers.CollectionToMap r.Form // HttpTODO
             Method = Some (r.Method.ToString())
-            Body = lazy r.BodyText // HttpTODO
+            Body = lazy r.Body.ToString()
         }
 
     static member FromHash(path: string, ?strict: bool) =
@@ -1031,7 +1031,8 @@ module IRouter =
                 let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
                 if builder.Path.StartsWith prefix then
                     builder.Path <- builder.Path.Substring prefix.Length
-                    router.Route (req.WithUri(builder.Uri)) // HttpTODO
+                    req.PathBase <- builder.Uri |> PathString.FromUriComponent
+                    router.Route req
                 else
                     None
             member this.Link e = router.Link e |> Option.map shift
