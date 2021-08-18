@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>Sitelets</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>IntelliFactory</Authors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="SiteletAttributes.fs" />
+    <Compile Include="Extensions.fs" />
+    <Compile Include="HttpHelpers.fs" />
+    <Compile Include="Router.fs" />
+    <Compile Include="InferredRouter.fs" />
+    <Compile Include="RouterAttributeReader.fs" />
+    <Compile Include="RouterInfer.Server.fs" />
+    <Compile Include="InferRouter.fs" />
+    <Compile Include="Sitelet.fsi" />
+    <Compile Include="Sitelet.fs" />
+    <Compile Include="SiteletHelper.fs" />
+    <Compile Include="Application.fsi" />
+    <Compile Include="Application.fs" />
+    <Compile Include="Website.fs" />
+    <Compile Include="Loading.fs" />
+    <Compile Include="Middleware.fs" />
+    <Compile Include="UrlHelpers.fsi" />
+    <Compile Include="UrlHelpers.fs" />
+    <None Include="paket.references" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.0.0" />
+    <PackageReference Include="System.Text.Json" Version="5.0.2" />
+  </ItemGroup>
+</Project>
