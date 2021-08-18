@@ -361,15 +361,7 @@ type Route =
         }
 
     static member FromRequest(r: HttpRequest) =
-        let u =
-            System.UriBuilder(
-                r.Scheme,
-                r.Host.Host,
-                r.Host.Port.GetValueOrDefault(-1),
-                r.Path.ToString(),
-                r.QueryString.ToString()
-            ).Uri
-
+        let u = HttpHelpers.SetUri r
         let p =
             if u.IsAbsoluteUri then 
                 u.AbsolutePath 

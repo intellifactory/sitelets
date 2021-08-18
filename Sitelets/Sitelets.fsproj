@@ -7,7 +7,7 @@
   <ItemGroup>
     <Compile Include="SiteletAttributes.fs" />
     <Compile Include="Extensions.fs" />
-    <Compile Include="Http.fs" />
+    <Compile Include="HttpHelpers.fs" />
     <Compile Include="Router.fs" />
     <Compile Include="InferredRouter.fs" />
     <Compile Include="RouterAttributeReader.fs" />

@@ -30,19 +30,19 @@ module HttpHelpers =
     open Microsoft.AspNetCore.Http
 
     type SV = Microsoft.Extensions.Primitives.StringValues
-
+    
     let CollectionToMap<'T when 'T :> IEnumerable<KeyValuePair<string, SV>>> (c: 'T) : Map<string, string> =
         c
         |> Seq.map (fun i ->
             i.Key, i.Value.ToString()
         )
         |> Map.ofSeq
-
+    
     let CollectionFromMap<'T when 'T :> IEnumerable<KeyValuePair<string, SV>>> (m: Map<string, string>) : IEnumerable<KeyValuePair<string, SV>> =
         m
         |> Seq.map (fun (KeyValue(k,v)) ->
             KeyValuePair (k, Microsoft.Extensions.Primitives.StringValues v)
-        )
+            )
 
     let ToQuery (req: HttpRequest) : Map<string, string> =
         let returnMap : Map<string, string> = Map.empty
@@ -58,3 +58,12 @@ module HttpHelpers =
             returnMap
         else
             Map.empty
+
+    let SetUri (r: HttpRequest) =
+        System.UriBuilder(
+            r.Scheme,
+            r.Host.Host,
+            r.Host.Port.GetValueOrDefault(-1),
+            r.Path.ToString(),
+            r.QueryString.ToString()
+        ).Uri
