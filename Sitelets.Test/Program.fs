@@ -69,9 +69,9 @@ let indexHandler (name : string) =
 
 type Endpoint =
     | [<EndPoint "GET /echo">] Str of string
-    | [<EndPoint "GET /actionctx">] ActionResult
+    | [<EndPoint "GET /actionresult">] ActionResult
     | [<EndPoint "GET /task/str">] Task1
-    | [<EndPoint "GET /task/actionctx">] Task2
+    | [<EndPoint "GET /task/actionresult">] Task2
     | [<EndPoint "GET /task/enumerable">] Task3
     | [<EndPoint "GET /enum">] Enumerable1
     | [<EndPoint "GET /enum/async">] Enumerable2
@@ -91,12 +91,16 @@ let mysitelet =
                 Task.FromResult contentRes
                 |> box
             | Task3 ->
-                let e = Dictionary<string, string>()
-                e.Add("hihi", "haha")
+                let e : seq<string * string> = seq{("hihi", "haha")}
                 Task.FromResult e
                 |> box
-            | Enumerable1 -> box "haha"
-            | Enumerable2 -> box ""
+            | Enumerable1 ->
+                seq{("haha", "huhu")}
+                |> box
+            | Enumerable2 ->
+                let asyncEnum : IAsyncEnumerable<int> = System.Linq.AsyncEnumerable.Empty<int>()
+                asyncEnum
+                |> box
             | _ -> failwith "error"
         )
     ]
