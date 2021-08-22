@@ -29,10 +29,23 @@ open System.Threading.Tasks
 open System.Runtime.CompilerServices
 open Microsoft.AspNetCore.Http
 
+type Context<'T> =
+    {
+        Link : 'T -> string
+        HttpContext : HttpContext
+    }
+
+module Context =
+    let Map (f: 'T2 -> 'T1) (ctx: Context<'T1>) : Context<'T2> =
+        {
+            Link = (ctx.Link << f)
+            HttpContext = ctx.HttpContext
+        }
+
 type Sitelet<'T when 'T : equality> =
     {
         Router : IRouter<'T>
-        Controller : HttpContext -> 'T -> obj
+        Controller : Context<'T> -> 'T -> obj
     }
 
     static member (+) (s1: Sitelet<'T>, s2: Sitelet<'T>) =
@@ -60,7 +73,7 @@ module Sitelet =
         }
 
     /// Creates a WebSharper.Sitelet using the given router and handler function.
-    let New (router: IRouter<'T>) (handle: HttpContext -> 'T -> obj) =
+    let New (router: IRouter<'T>) (handle: Context<'T> -> 'T -> obj) =
         {
             Router = router
             Controller = handle
@@ -81,11 +94,9 @@ module Sitelet =
             Controller = fun ctx endpoint ->
                 let prot = filter
                 let failure () =
-                    let redirEndpoint = prot.LoginRedirect endpoint
-                    let link = ctx.Items.["Sitelets.Link"] |> unbox<'T -> string>
-                    (RedirectResult (link redirEndpoint)) :> obj
+                    RedirectResult (ctx.Link endpoint) |> box
                 let loggedIn = 
-                    let nameClaim = ctx.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier)
+                    let nameClaim = ctx.HttpContext.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier)
                     if isNull nameClaim then None else Some nameClaim.Value
                 match loggedIn with
                 | Some user ->
@@ -99,7 +110,7 @@ module Sitelet =
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
     /// and serves a single content value at a given location.
-    let Content (location: string) (endpoint: 'T) (cnt: HttpContext -> obj) =
+    let Content (location: string) (endpoint: 'T) (cnt: Context<'T> -> obj) =
         {
             Router = Router.Single endpoint location
             Controller = fun ctx _ -> cnt ctx 
@@ -110,7 +121,7 @@ module Sitelet =
         {
             Router = IRouter.Map f g s.Router
             Controller = fun ctx endpoint ->
-                s.Controller ctx (g endpoint)
+                s.Controller (Context.Map f ctx) (g endpoint)
         }
 
     /// Maps over the served sitelet content.
@@ -128,7 +139,7 @@ module Sitelet =
             Router = IRouter.TryMap f g s.Router
             Controller = fun ctx a ->
                 match g a with
-                | Some ea -> s.Controller ctx ea
+                | Some ea -> s.Controller (Context.Map (f >> Option.get) ctx) ea
                 | None -> failwith "Invalid endpoint in Sitelet.Embed"
         }
 
@@ -138,7 +149,7 @@ module Sitelet =
             Router = IRouter.Embed embed unembed sitelet.Router
             Controller = fun ctx a ->
                 match unembed a with
-                | Some ea -> sitelet.Controller ctx ea
+                | Some ea -> sitelet.Controller (Context.Map embed ctx) ea
                 | None -> failwith "Invalid endpoint in Sitelet.Embed"
         }
 
@@ -195,7 +206,7 @@ module Sitelet =
         {
             Router = IRouter.Box sitelet.Router
             Controller = fun ctx a ->
-                sitelet.Controller ctx (unbox a)
+                sitelet.Controller (Context.Map box ctx) (unbox a)
         }
 
     let Upcast sitelet = Box sitelet
@@ -205,31 +216,27 @@ module Sitelet =
         {
             Router = IRouter.Unbox sitelet.Router
             Controller = fun ctx a ->
-                sitelet.Controller ctx (box a)
+                sitelet.Controller (Context.Map unbox ctx) (box a)
         }
 
     let UnsafeDowncast sitelet = Unbox sitelet
 
     /// Constructs a sitelet with an inferred router and a given controller
     /// function.
-    let Infer<'T when 'T : equality> (handle : HttpContext -> 'T -> obj) =
+    let Infer<'T when 'T : equality> (handle : Context<'T> -> 'T -> obj) =
         {
             Router = Router.IInfer<'T>()
             Controller = handle
         }
 
-    let InferWithCustomErrors<'T when 'T : equality> (handle : HttpContext -> ParseRequestResult<'T> -> obj) =
+    let InferWithCustomErrors<'T when 'T : equality> (handle : Context<'T> -> ParseRequestResult<'T> -> obj) =
         {
             Router = Router.IInferWithCustomErrors<'T>()
-            Controller = handle // TODO
-                //C.CustomContentAsync <| fun ctx -> async {
-                //    let ctx = (Context.Map ParseRequestResult.Success ctx)
-                //    let! content = handle ctx x
-                //    return! C.ToResponse content ctx
-                //}
+            Controller = fun ctx x ->
+                handle (Context.Map ParseRequestResult.Success ctx) x
         }
 
-    let InferPartial (embed: 'T1 -> 'T2) (unembed: 'T2 -> 'T1 option) (mkContent: HttpContext -> 'T1 -> obj) : Sitelet<'T2> =
+    let InferPartial (embed: 'T1 -> 'T2) (unembed: 'T2 -> 'T1 option) (mkContent: Context<'T2> -> 'T1 -> obj) : Sitelet<'T2> =
         {
             Router = Router.IInfer<'T1>() |> IRouter.Embed embed unembed
             Controller = fun ctx p ->
@@ -245,7 +252,7 @@ module Sitelet =
         | Some (embed, unembed) -> InferPartial embed unembed mkContent
         | None -> failwith "Invalid union case in Sitelet.InferPartialInUnion"
 
-    let MapContext (f: HttpContext -> HttpContext) (sitelet: Sitelet<'T>) : Sitelet<'T> =
+    let MapContext (f: Context<'T> -> Context<'T>) (sitelet: Sitelet<'T>) : Sitelet<'T> =
         { sitelet with
             Controller = fun ctx action ->
                 sitelet.Controller (f ctx) action
@@ -254,7 +261,7 @@ module Sitelet =
     // let WithSettings (settings: seq<string * string>) (sitelet: Sitelet<'T>) : Sitelet<'T> =
     //     MapContext (Context.WithSettings settings) sitelet // TODO
 
-type RouteHandler<'T> = delegate of HttpContext * 'T -> obj
+type RouteHandler<'T> = delegate of Context<obj> * 'T -> obj
 
 [<CompiledName "Sitelet"; Sealed>]
 type CSharpSitelet =
@@ -266,7 +273,7 @@ type CSharpSitelet =
             handle.Invoke(ctx, unbox<'T> ep)
         )
 
-    static member Content (location: string, endpoint: 'T, cnt: Func<HttpContext, obj>) =
+    static member Content (location: string, endpoint: 'T, cnt: Func<Context<'T>, obj>) =
         Sitelet.Content location endpoint cnt.Invoke
         
     static member Sum ([<ParamArray>] sitelets: Sitelet<'T>[]) =
@@ -311,7 +318,7 @@ type SiteletBuilder() =
 
     let sitelets = ResizeArray()
 
-    member this.With<'T when 'T : equality>(content: Func<HttpContext, 'T, obj>) =
+    member this.With<'T when 'T : equality>(content: Func<Context<obj>, 'T, obj>) =
         sitelets.Add <|
             Sitelet.InferPartial
                 box
@@ -322,7 +329,7 @@ type SiteletBuilder() =
                 )
         this
 
-    member this.With(path: string, content: Func<HttpContext, obj>) =
+    member this.With(path: string, content: Func<Context<obj>, obj>) =
         let content ctx =
             content.Invoke(ctx)
         sitelets.Add <| Sitelet.Content path (box path) content

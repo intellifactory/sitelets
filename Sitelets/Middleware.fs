@@ -43,33 +43,11 @@ module Middleware =
         | Some sitelet ->
             Func<_,_,_>(fun (httpCtx: HttpContext) (next: Func<Task>) ->
                 let req = httpCtx.Request
-                let rec contentHelper (content: obj) =
-                    async {
-                        match content with
-                        | :? string as stringContent ->
-                            httpCtx.Response.StatusCode <- StatusCodes.Status200OK
-                            do! httpCtx.Response.WriteAsync(stringContent) |> Async.AwaitTask
-                        | :? IActionResult as actionResult ->
-                            let actionCtx = ActionContext(httpCtx, RouteData(), ActionDescriptor())
-                            do! actionResult.ExecuteResultAsync(actionCtx) |> Async.AwaitTask
-                        | _ ->
-                            let contentType = content.GetType()
-                            if contentType.IsGenericType && contentType.GetGenericTypeDefinition() = typedefof<Task<_>> then
-                                let contentTask = content :?> Task
-                                do! contentTask |> Async.AwaitTask
-                                let contentResult =
-                                    let resultGetter = contentType.GetProperty("Result")
-                                    resultGetter.GetMethod.Invoke(contentTask, [||])
-                                return! contentHelper contentResult
-                            else
-                                httpCtx.Response.StatusCode <- StatusCodes.Status200OK
-                                //let jsonOptions = httpCtx.RequestServices.GetService(typeof(JsonSerializerOptions))
-                                do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content) |> Async.AwaitTask
-                    }
                 match sitelet.Router.Route req with
                 | Some endpoint ->
-                    let content = sitelet.Controller httpCtx endpoint
-                    contentHelper content
+                    let ctx = SiteletHelper.createContext sitelet httpCtx
+                    let content = sitelet.Controller ctx endpoint
+                    SiteletHelper.contentHelper httpCtx content
                     |> Async.StartAsTask :> Task
                 | None -> next.Invoke()
             )

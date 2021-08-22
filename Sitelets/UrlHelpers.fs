@@ -179,7 +179,6 @@ module UrlHelpers = // HttpTODO
         | "TRACE" ->
             TRACE (allParams (), req.PathBase.ToUriComponent() |> Uri)
         // TODO: Revise.  Unfortunately, F# active patterns only allow up to 7 cases.
-        | "HEAD"
-        | "CONNECT" ->
+        | _ ->
             SPECIAL (req.Method, allParams, req.PathBase.ToUriComponent() |> Uri)
 
