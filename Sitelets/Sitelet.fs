@@ -96,23 +96,23 @@ module Sitelet =
                 let prot = filter
                 let failure () =
                     RedirectResult (ctx.Link endpoint) |> box
-                let loggedIn = 
-                    let authHandler = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationHandler>) :?> IAuthenticationHandler
-                    if not <| isNull authHandler then
-                        authHandler.AuthenticateAsync()
-                        |> box
+                async {
+                    let! loggedIn = 
+                        let authHandler = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationHandler>) :?> IAuthenticationHandler
+                        if not <| isNull authHandler then
+                            authHandler.AuthenticateAsync() |> Async.AwaitTask
+                        else
+                            failwith "Authentication handler not found"
+                    if loggedIn.Succeeded then
+                        let user = loggedIn.Principal.Identity.Name
+                        if prot.VerifyUser user then
+                            return site.Controller ctx endpoint
+                        else
+                            return failure ()
                     else
-                        failwith "Authentication handler not found"
-                    let nameClaim = ctx.HttpContext.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier)
-                    if isNull nameClaim then None else Some nameClaim.Value
-                match loggedIn with
-                | Some user ->
-                    if prot.VerifyUser user then
-                        site.Controller ctx endpoint
-                    else
-                        failure ()
-                | None ->
-                    failure ()
+                        return failure ()
+                }
+                |> Async.StartAsTask |> box
         }
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
