@@ -97,6 +97,12 @@ module Sitelet =
                 let failure () =
                     RedirectResult (ctx.Link endpoint) |> box
                 let loggedIn = 
+                    let authHandler = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationHandler>) :?> IAuthenticationHandler
+                    if not <| isNull authHandler then
+                        authHandler.AuthenticateAsync()
+                        |> box
+                    else
+                        failwith "Authentication handler not found"
                     let nameClaim = ctx.HttpContext.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier)
                     if isNull nameClaim then None else Some nameClaim.Value
                 match loggedIn with
@@ -106,13 +112,7 @@ module Sitelet =
                     else
                         failure ()
                 | None ->
-                    let authHandler = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationHandler>)
-                    if not <| isNull authHandler then
-                        let upcastAuthHandler = authHandler :?> IAuthenticationHandler
-                        upcastAuthHandler.AuthenticateAsync() |> Async.AwaitTask |> Async.RunSynchronously
-                        |> box
-                    else
-                        site.Controller ctx endpoint
+                    failure ()
         }
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
