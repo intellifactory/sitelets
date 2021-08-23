@@ -44,6 +44,8 @@ type Startup private () =
 
         app.UseAuthorization() |> ignore
 
+        app.UseAuthentication() |> ignore
+
         app.UseSitelets(TestSitelets.main) |> ignore
 
         app.UseEndpoints(fun endpoints ->

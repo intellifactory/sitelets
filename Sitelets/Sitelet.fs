@@ -109,7 +109,7 @@ module Sitelet =
                     let authHandler = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationHandler>)
                     if not <| isNull authHandler then
                         let upcastAuthHandler = authHandler :?> IAuthenticationHandler
-                        upcastAuthHandler.AuthenticateAsync() |> Async.AwaitTask
+                        upcastAuthHandler.AuthenticateAsync() |> Async.AwaitTask |> Async.RunSynchronously
                         |> box
                     else
                         site.Controller ctx endpoint
