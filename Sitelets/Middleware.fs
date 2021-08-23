@@ -42,6 +42,7 @@ module Middleware =
             Func<_,_,_>(fun (_: HttpContext) (next: Func<Task>) -> next.Invoke())
         | Some sitelet ->
             Func<_,_,_>(fun (httpCtx: HttpContext) (next: Func<Task>) ->
+                
                 let req = httpCtx.Request
                 match sitelet.Router.Route req with
                 | Some endpoint ->

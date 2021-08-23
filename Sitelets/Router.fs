@@ -1028,7 +1028,8 @@ module IRouter =
                 makeUri (joinWithSlash prefix (path loc) |> trimFinalSlash)
         { new IRouter<'T> with
             member this.Route req =
-                let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
+                //let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
+                let builder = HttpHelpers.SetUri req |> UriBuilder
                 if builder.Path.StartsWith prefix then
                     builder.Path <- builder.Path.Substring prefix.Length
                     req.PathBase <- builder.Uri |> PathString.FromUriComponent

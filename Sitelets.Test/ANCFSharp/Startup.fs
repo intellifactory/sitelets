@@ -41,7 +41,7 @@ type Startup private () =
 
         app.UseAuthorization() |> ignore
 
-        app.UseSitelets(TestSitelets.sampleSitelet) |> ignore
+        app.UseSitelets(TestSitelets.main) |> ignore
 
         app.UseEndpoints(fun endpoints ->
             endpoints.MapControllerRoute(
