@@ -74,6 +74,7 @@ module SiteletHelper =
         | _ -> a + b
 
     let internal createContext (sl: Sitelet<'T>) (httpCtx: HttpContext) =
+        
         let appPath = httpCtx.Request.PathBase.ToUriComponent()
         let link (x: 'T) =
             match sl.Router.Link x with

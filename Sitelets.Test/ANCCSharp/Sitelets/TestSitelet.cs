@@ -13,6 +13,9 @@ namespace ANCCSharp.SiteletsTest
             .With("/sitelets", ctx =>
                   "Hello World from C#"
             )
+            .With("/sitelets2", ctx =>
+                ctx.Link
+            )
             .Install();
     }
 }

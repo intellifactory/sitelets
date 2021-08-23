@@ -21,6 +21,7 @@
 namespace Sitelets
 
 open Microsoft.AspNetCore.Mvc
+open Microsoft.AspNetCore.Authentication
 
 #nowarn "44" // Obsolete CustomContent, CustomContentAsync, PageContent, PageContentAsync
 
@@ -105,7 +106,13 @@ module Sitelet =
                     else
                         failure ()
                 | None ->
-                    failure ()
+                    let authHandler = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationHandler>)
+                    if not <| isNull authHandler then
+                        let upcastAuthHandler = authHandler :?> IAuthenticationHandler
+                        upcastAuthHandler.AuthenticateAsync() |> Async.AwaitTask
+                        |> box
+                    else
+                        site.Controller ctx endpoint
         }
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
