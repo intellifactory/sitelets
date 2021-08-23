@@ -11,6 +11,7 @@ open Microsoft.AspNetCore.Mvc
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open Sitelets
 
 type Startup private () =
     new (configuration: IConfiguration) as this =
@@ -39,6 +40,8 @@ type Startup private () =
         app.UseRouting() |> ignore
 
         app.UseAuthorization() |> ignore
+
+        app.UseSitelets(TestSitelets.sampleSitelet) |> ignore
 
         app.UseEndpoints(fun endpoints ->
             endpoints.MapControllerRoute(

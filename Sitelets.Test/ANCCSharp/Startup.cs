@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Sitelets;
 
 namespace ANCCSharp
 {
@@ -45,6 +46,8 @@ namespace ANCCSharp
             app.UseRouting();
 
             app.UseAuthorization();
+
+            app.UseSitelets<object>(SiteletsTest.TestSitelet.S);
 
             app.UseEndpoints(endpoints =>
             {
