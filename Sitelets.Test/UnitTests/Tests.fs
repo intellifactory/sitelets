@@ -19,25 +19,27 @@ module UnitTestHelpers =
     let helloWorldSitelet =
         Sitelet.Content "/test1" TestEndPoint.Ep1 (fun ctx -> box "Hello World")
 
-    let sampleHttpRequest =
+    let sampleHttpRequest() =
         let ctx = DefaultHttpContext()
         let httpReq = ctx.Request
         httpReq.Scheme <- "http"
         httpReq.Method <- "GET"
         httpReq.Host <- HostString("localhost:5000")
-        httpReq.Path <- PathString("/test1/")
+        httpReq.Path <- PathString("/test1")
         httpReq
 
 module TH = UnitTestHelpers
 
 [<Test>]
 let ``Hello World routing test`` () =
-    let req = TH.sampleHttpRequest
+    let req = TH.sampleHttpRequest ()
 
-    TH.helloWorldSitelet.Router.Route req |> should equal (Some TestEndPoint.Ep1)
+    TH.helloWorldSitelet.Router.Route req
+    |> should equal (Some TestEndPoint.Ep1)
     
-    req.Path <- PathString("/test2/")
-    TH.helloWorldSitelet.Router.Route req |> should equal None
+    req.Path <- PathString("/test2")
+    TH.helloWorldSitelet.Router.Route req
+    |> should equal None
 
 [<Test>]
 let ``Hello World linking test`` () =
@@ -46,5 +48,15 @@ let ``Hello World linking test`` () =
 
     link.Value.ToString() |> should equal "/test1"
 
-    let link = TH.helloWorldSitelet.Router.Link(TestEndPoint.Ep2)
-    link |> should be (ofCase <@ None @>)
+    let badlink = TH.helloWorldSitelet.Router.Link(TestEndPoint.Ep2)
+    badlink |> should equal None
+
+[<Test>]
+let ``Hello World shifting test`` () =
+    let shiftedSite = TH.helloWorldSitelet.Shift "shifted"
+    let req = TH.sampleHttpRequest ()
+    let link = shiftedSite.Router.Link(TestEndPoint.Ep1)
+    link.Value.ToString() |> should equal "/shifted/test1"
+    req.Path <- PathString("/shifted/test1")
+    let routedReq = shiftedSite.Router.Route req
+    routedReq |> should equal (Some TestEndPoint.Ep1)

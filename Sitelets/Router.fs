@@ -1031,8 +1031,7 @@ module IRouter =
                 //let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
                 let builder = HttpHelpers.SetUri req |> UriBuilder
                 if builder.Path.StartsWith prefix then
-                    builder.Path <- builder.Path.Substring prefix.Length
-                    req.PathBase <- builder.Uri |> PathString.FromUriComponent
+                    req.Path <- builder.Path.Substring prefix.Length |> PathString
                     router.Route req
                 else
                     None
