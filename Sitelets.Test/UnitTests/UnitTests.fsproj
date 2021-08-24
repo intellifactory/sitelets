@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="IntegrationTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -23,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Sitelets\Sitelets.fsproj" />
+    <ProjectReference Include="..\ANCFSharp\ANCFSharp.fsproj" />
   </ItemGroup>
 
 </Project>
