@@ -73,7 +73,11 @@ module RoutedRequest =
             override x.Body =
                 x.BodyText
             override x.Cookies = CollectionToMap2 req.Cookies
-            override x.Form = CollectionToMap req.Form
+            override x.Form =
+                if req.HasFormContentType then
+                    CollectionToMap req.Form
+                else
+                    Map.empty
             override x.Headers = CollectionToMap req.Headers
             override x.Host = req.Host.ToString()
             override x.Method = req.Method
