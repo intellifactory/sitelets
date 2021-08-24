@@ -1020,9 +1020,10 @@ module IRouter =
                 makeUri (joinWithSlash prefix (path loc) |> trimFinalSlash)
         { new IRouter<'T> with
             member this.Route req =
-                let p = req.Path.Substring prefix.Length
+                let p = req.Path
                 if p.StartsWith prefix then
-                    let newReq = RHRWithPath (req, p)
+                    let newP = req.Path.Substring prefix.Length
+                    let newReq = RHRWithPath (req, newP)
                     router.Route newReq
                 else
                     None
