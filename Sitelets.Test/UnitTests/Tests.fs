@@ -24,6 +24,9 @@ module UnitTestHelpers =
     let helloWorldSitelet =
         Sitelet.Content "/test1" TestEndPoint.Ep1 (fun ctx -> box "Hello World")
 
+    let helloWorldSitelet2 =
+        Sitelet.Content "/test2" TestEndPoint.Ep2 (fun ctx -> box "Hello, World!")
+
     let sampleHttpRequest() =
         let ctx = DefaultHttpContext()
         let httpReq = ctx.Request
@@ -57,7 +60,7 @@ let ``Hello World linking test`` () =
     badlink |> should equal None
 
 [<Test>]
-let ``Hello World shifting test`` () =
+let ``Shifting test`` () =
     let shiftedSite = TH.helloWorldSitelet.Shift "shifted"
     let req = TH.sampleHttpRequest ()
     let link = shiftedSite.Router.Link(TestEndPoint.Ep1)
@@ -96,3 +99,48 @@ let ``Infer test`` () =
     inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E2)
     req.Path <- PathString "/infer3"
     inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E3)
+
+[<Test>]
+let ``Sum Test`` () =
+    let summedSitelet =
+        Sitelet.Sum [
+            TH.helloWorldSitelet
+            TH.helloWorldSitelet2
+        ]
+    let link1 = summedSitelet.Router.Link TestEndPoint.Ep1
+    link1.Value.ToString() |> should equal "/test1"
+    let link2 = summedSitelet.Router.Link TestEndPoint.Ep2
+    link2.Value.ToString() |> should equal "/test2"
+    let req = TH.sampleHttpRequest ()
+    summedSitelet.Router.Route req
+    |> should equal (Some TestEndPoint.Ep1)
+    req.Path <- PathString "/test2"
+    summedSitelet.Router.Route req
+    |> should equal (Some TestEndPoint.Ep2)
+
+    let shiftedHelloWorldSite =
+        TH.helloWorldSitelet.Shift "shifted"
+    let req2 = TH.sampleHttpRequest ()
+    let shiftedSum = 
+        Sitelet.Sum [
+            shiftedHelloWorldSite
+            TH.helloWorldSitelet
+            TH.helloWorldSitelet2
+        ]
+    req.Path <- PathString "/shifted/test1"
+    shiftedSum.Router.Route req
+    |> should equal (Some TestEndPoint.Ep1)
+    req.Path <- PathString "/test1"
+    shiftedSum.Router.Route req
+    |> should equal (Some TestEndPoint.Ep1)
+    req.Path <- PathString "/test2"
+    shiftedSum.Router.Route req
+    |> should equal (Some TestEndPoint.Ep2)
+    req.Path <- PathString "/shifted/test2"
+    shiftedSum.Router.Route req
+    |> should equal None
+
+//let ``MapContent test`` () =
+//    let sitelet = TH.helloWorldSitelet
+//    let contentMappedSitelet =
+//        Sitelet.MapContent (fun _ -> box )
