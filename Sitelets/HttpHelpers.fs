@@ -44,21 +44,6 @@ module HttpHelpers =
             KeyValuePair (k, Microsoft.Extensions.Primitives.StringValues v)
             )
 
-    let ToQuery (req: HttpRequest) : Map<string, string> =
-        let returnMap : Map<string, string> = Map.empty
-        for KeyValue(k, v) in req.Query do
-            returnMap.Add (k, v.ToString()) |> ignore
-        returnMap
-
-    let ToForm (req: HttpRequest) : Map<string, string> =
-        if req.HasFormContentType then
-            let returnMap : Map<string, string> = Map.empty
-            for KeyValue(k, v) in req.Query do
-                returnMap.Add (k, v.ToString()) |> ignore
-            returnMap
-        else
-            Map.empty
-
     let SetUri (r: HttpRequest) =
         System.UriBuilder(
             r.Scheme,
@@ -67,3 +52,19 @@ module HttpHelpers =
             r.Path.ToString(),
             r.QueryString.ToString()
         ).Uri
+
+    type IHttpRequest =
+        abstract member Body: System.IO.Stream
+        abstract member Cookies: IEnumerable<KeyValuePair<String,String>>
+        abstract member Form: IEnumerable<KeyValuePair<String,SV>>
+        abstract member HasFormContentType: bool
+        abstract member Headers: IEnumerable<KeyValuePair<String,SV>>
+        abstract member Host: string
+        abstract member HttpContext: HttpContext
+        abstract member isHttps: bool
+        abstract member Method: string
+        abstract member Path: string
+        abstract member PathBase: string
+        abstract member Query: IEnumerable<KeyValuePair<String,SV>>
+        abstract member QueryString: string
+        abstract member Scheme: string

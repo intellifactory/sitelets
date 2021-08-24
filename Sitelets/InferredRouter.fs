@@ -73,7 +73,7 @@ module internal ServerInferredOperators =
                 Result = StrictMode
             }
 
-        member this.ToPath() = // HttpTODO
+        member this.ToPath() =
             {
                 Segments = this.Segments
                 QueryArgs = this.QueryArgs
@@ -82,7 +82,7 @@ module internal ServerInferredOperators =
                 Body = this.Body
             } : Route
 
-        static member FromWSRequest(r: HttpRequest) = // HttpTODO
+        static member FromWSRequest(r: HttpRequest) =
             let u = HttpHelpers.SetUri r
             let p =
                 if u.IsAbsoluteUri then 
@@ -94,8 +94,8 @@ module internal ServerInferredOperators =
                     | q -> s.Substring(0, q)
             {
                 Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-                QueryArgs = HttpHelpers.ToQuery r
-                FormData = HttpHelpers.ToForm r
+                QueryArgs = HttpHelpers.CollectionToMap r.Query
+                FormData = HttpHelpers.CollectionToMap r.Form
                 Method = Some (r.Method)
                 Body = lazy r.Body.ToString()
                 Result = StrictMode
