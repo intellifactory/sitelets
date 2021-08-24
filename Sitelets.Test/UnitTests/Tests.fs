@@ -15,6 +15,11 @@ type TestEndPoint =
     | Ep1
     | Ep2
 
+type TestInferEndpoint =
+    | [<EndPoint "/infer1">] E1
+    | [<EndPoint "/infer2">] E2
+    | [<EndPoint "/infer3">] E3
+
 module UnitTestHelpers =
     let helloWorldSitelet =
         Sitelet.Content "/test1" TestEndPoint.Ep1 (fun ctx -> box "Hello World")
@@ -60,3 +65,34 @@ let ``Hello World shifting test`` () =
     req.Path <- PathString("/shifted/test1")
     let routedReq = shiftedSite.Router.Route req
     routedReq |> should equal (Some TestEndPoint.Ep1)
+
+    let furtherShiftedSite = shiftedSite.Shift "extrashift"
+    let req = TH.sampleHttpRequest ()
+    let link = furtherShiftedSite.Router.Link(TestEndPoint.Ep1)
+    link.Value.ToString() |> should equal "/extrashift/shifted/test1"
+    req.Path <- PathString("/extrashift/shifted/test1")
+    let fortherRoutedReq = furtherShiftedSite.Router.Route req
+    fortherRoutedReq |> should equal (Some TestEndPoint.Ep1)
+
+[<Test>]
+let ``Infer test`` () =
+    let inferSitelet =
+        Sitelet.Infer (fun ctx -> function
+            | E1 -> box "Infer endpoint 1"
+            | E2 -> box "Infer endpoint 2"
+            | E3 -> box "Infer endpoint 3"
+        )
+    let link1 = inferSitelet.Router.Link TestInferEndpoint.E1
+    link1.Value.ToString() |> should equal "/infer1"
+    let link2 = inferSitelet.Router.Link TestInferEndpoint.E2
+    link2.Value.ToString() |> should equal "/infer2"
+    let link3 = inferSitelet.Router.Link TestInferEndpoint.E3
+    link3.Value.ToString() |> should equal "/infer3"
+
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/infer1"
+    inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E1)
+    req.Path <- PathString "/infer2"
+    inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E2)
+    req.Path <- PathString "/infer3"
+    inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E3)
