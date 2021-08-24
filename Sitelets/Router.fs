@@ -361,15 +361,7 @@ type Route =
         }
 
     static member FromRequest(r: HttpRequest) =
-        let u = HttpHelpers.SetUri r
-        let p =
-            if u.IsAbsoluteUri then 
-                u.AbsolutePath 
-            else 
-                let s = u.OriginalString
-                match s.IndexOf('?') with
-                | -1 -> s
-                | q -> s.Substring(0, q)
+        let p = HttpHelpers.UrlFromRequest r
         {
             Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
             QueryArgs = HttpHelpers.CollectionToMap r.Query
@@ -1029,9 +1021,9 @@ module IRouter =
         { new IRouter<'T> with
             member this.Route req =
                 //let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
-                let builder = HttpHelpers.SetUri req |> UriBuilder
-                if builder.Path.StartsWith prefix then
-                    req.Path <- builder.Path.Substring prefix.Length |> PathString
+                let p = HttpHelpers.UrlFromRequest req
+                if p.StartsWith prefix then
+                    req.Path <- p.Substring prefix.Length |> PathString
                     router.Route req
                 else
                     None

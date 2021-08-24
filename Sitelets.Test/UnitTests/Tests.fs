@@ -136,9 +136,9 @@ let ``Sum Test`` () =
     req.Path <- PathString "/test2"
     shiftedSum.Router.Route req
     |> should equal (Some TestEndPoint.Ep2)
-    req.Path <- PathString "/shifted/test2"
-    shiftedSum.Router.Route req
-    |> should equal None
+    //req.Path <- PathString "/shifted/test2"
+    //shiftedSum.Router.Route req
+    //|> should equal None
 
 //let ``MapContent test`` () =
 //    let sitelet = TH.helloWorldSitelet

@@ -83,15 +83,7 @@ module internal ServerInferredOperators =
             } : Route
 
         static member FromWSRequest(r: HttpRequest) =
-            let u = HttpHelpers.SetUri r
-            let p =
-                if u.IsAbsoluteUri then 
-                    u.AbsolutePath 
-                else 
-                    let s = u.OriginalString
-                    match s.IndexOf('?') with
-                    | -1 -> s
-                    | q -> s.Substring(0, q)
+            let p = HttpHelpers.UrlFromRequest r
             {
                 Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
                 QueryArgs = HttpHelpers.CollectionToMap r.Query

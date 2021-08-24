@@ -30,8 +30,15 @@ module HttpHelpers =
     open Microsoft.AspNetCore.Http
 
     type SV = Microsoft.Extensions.Primitives.StringValues
-    
+
     let CollectionToMap<'T when 'T :> IEnumerable<KeyValuePair<string, SV>>> (c: 'T) : Map<string, string> =
+        c
+        |> Seq.map (fun i ->
+            i.Key, i.Value.ToString()
+        )
+        |> Map.ofSeq
+
+    let CollectionToMap2<'T when 'T :> IEnumerable<KeyValuePair<string, string>>> (c: 'T) : Map<string, string> =
         c
         |> Seq.map (fun i ->
             i.Key, i.Value.ToString()
@@ -44,27 +51,33 @@ module HttpHelpers =
             KeyValuePair (k, Microsoft.Extensions.Primitives.StringValues v)
             )
 
-    let SetUri (r: HttpRequest) =
-        System.UriBuilder(
-            r.Scheme,
-            r.Host.Host,
-            r.Host.Port.GetValueOrDefault(-1),
-            r.Path.ToString(),
-            r.QueryString.ToString()
-        ).Uri
+    let UrlFromRequest (r: HttpRequest) = r.Path.ToString()
 
     type IHttpRequest =
-        abstract member Body: System.IO.Stream
-        abstract member Cookies: IEnumerable<KeyValuePair<String,String>>
-        abstract member Form: IEnumerable<KeyValuePair<String,SV>>
-        abstract member HasFormContentType: bool
-        abstract member Headers: IEnumerable<KeyValuePair<String,SV>>
+        abstract member Body: string
+        abstract member Cookies: Map<string, string>
+        abstract member Form: Map<string, string>
+        abstract member Headers: Map<string, string>
         abstract member Host: string
-        abstract member HttpContext: HttpContext
-        abstract member isHttps: bool
         abstract member Method: string
         abstract member Path: string
         abstract member PathBase: string
-        abstract member Query: IEnumerable<KeyValuePair<String,SV>>
-        abstract member QueryString: string
+        abstract member Query: Map<string, string>
         abstract member Scheme: string
+
+    type RoutedHttpRequest (req: HttpRequest) =
+        interface IHttpRequest with
+            override x.Body =
+                use memStr = new System.IO.MemoryStream()
+                req.Body.CopyTo memStr
+                use sr = new System.IO.StreamReader(memStr)
+                sr.ReadToEnd()
+            override x.Cookies = CollectionToMap2 req.Cookies
+            override x.Form = CollectionToMap req.Form
+            override x.Headers = CollectionToMap req.Headers
+            override x.Host = req.Host.ToString()
+            override x.Method = req.Method
+            override x.Path = req.Path.ToString()
+            override x.PathBase = req.PathBase.ToString()
+            override x.Query = CollectionToMap req.Query
+            override x.Scheme = req.Scheme
