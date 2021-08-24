@@ -33,3 +33,33 @@ let ``Hello World integration test`` () =
         resp.IsSuccessStatusCode |> should be False
     }
     |> Async.StartAsTask
+
+[<Test>]
+let ``Content test`` () =
+    let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
+    
+    let client = webAppFactory.CreateClient()
+
+    async {
+        let! resp = client.GetAsync("/hello") |> Async.AwaitTask
+        let! stream = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+        stream |> should equal "Hello World"
+    }
+    |> Async.StartAsTask
+
+[<Test>]
+let ``MapContent test`` () =
+    let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
+    
+    let client = webAppFactory.CreateClient()
+
+    async {
+        let! resp = client.GetAsync("/mapped") |> Async.AwaitTask
+        let! stream = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+        stream |> should equal "Hello again"
+    }
+    |> Async.StartAsTask
+
+[<Test>]
+let ``Json api test`` () =
+    true |> should equal true //TODO

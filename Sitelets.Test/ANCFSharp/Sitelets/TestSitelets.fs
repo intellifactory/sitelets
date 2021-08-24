@@ -4,12 +4,17 @@
     type Endpoint =
         | [<EndPoint "/sitelets">] Text1
         | [<EndPoint "/sitelets2">] Text2
-        | [<EndPoint "hello">] Text3
+        | Text3
         | [<EndPoint "/a/s/d">] LongUrl
         | Protected
         | Login
+        | Mapped
 
     let helloWorldSite = Sitelet.Content "/hello" Endpoint.Text3 (fun _ -> box "Hello World")
+
+    let unmappedSite = Sitelet.Content "/mapped" Endpoint.Mapped (fun _ -> box "Hello there")
+
+    let mappedSite = Sitelet.MapContent (fun _ -> box "Hello again") unmappedSite
 
     let shiftedSitelet = Sitelet.Shift "shifted" helloWorldSite
 
@@ -39,6 +44,7 @@
             shiftedSitelet
             loginSite
             protectedSite
+            mappedSite
             infer
         ]
 

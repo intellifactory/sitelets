@@ -63,7 +63,7 @@ module internal ServerInferredOperators =
                 Result = StrictMode
             }
 
-        static member OfPath(path: Route) = // HttpTODO
+        static member OfPath(path: Route) =
             {
                 Segments = path.Segments
                 QueryArgs = path.QueryArgs
@@ -435,7 +435,7 @@ module internal ServerInferredOperators =
             IExplicitMethods = Set.add "OPTIONS" item.IExplicitMethods
         }
 
-    let IQuery key (item: InferredRouter) : InferredRouter = // HttpTODO
+    let IQuery key (item: InferredRouter) : InferredRouter =
         {
             IParse = fun path ->
                 match path.QueryArgs.TryGetValue(key) with
@@ -465,7 +465,7 @@ module internal ServerInferredOperators =
             member this.Get (o: obj) = unbox<'T option> o |> Option.map box
             member this.Some (x: obj) = Some (unbox<'T> x) |> box
 
-    let IQueryOption (itemType: System.Type) key (item: InferredRouter) : InferredRouter = // HttpTODO
+    let IQueryOption (itemType: System.Type) key (item: InferredRouter) : InferredRouter =
         let converter = 
             System.Activator.CreateInstance(typedefof<OptionConverter<_>>.MakeGenericType(itemType))
             :?> IOptionConverter
@@ -495,7 +495,7 @@ module internal ServerInferredOperators =
             IExplicitMethods = Set.empty
         }
 
-    let IQueryNullable key (item: InferredRouter) : InferredRouter = // HttpTODO
+    let IQueryNullable key (item: InferredRouter) : InferredRouter =
         {
             IParse = fun path ->
                 match path.QueryArgs.TryGetValue(key) with

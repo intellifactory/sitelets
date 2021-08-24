@@ -11,9 +11,23 @@ open Sitelets
 let Setup () =
     ()
 
+type RecTest =
+    {
+        A : string
+        B : int
+        C : bool
+    }
+
+type JsonEndPoint =
+    | [<EndPoint "/json">] [<Json "json">] JsonEP of json: RecTest
+
 type TestEndPoint =
     | Ep1
     | Ep2
+
+type TestEndPoint2 =
+    | [<EndPoint "/mappedendpoint1">] Ep1
+    | [<EndPoint "/mappedendpoint2">] Ep2
 
 type TestInferEndpoint =
     | [<EndPoint "/infer1">] E1
@@ -136,11 +150,22 @@ let ``Sum Test`` () =
     req.Path <- PathString "/test2"
     shiftedSum.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep2)
-    //req.Path <- PathString "/shifted/test2"
-    //shiftedSum.Router.Route req
-    //|> should equal None
+    req.Path <- PathString "/shifted/test2"
+    shiftedSum.Router.Route <| RoutedHttpRequest req
+    |> should equal None
 
-//let ``MapContent test`` () =
-//    let sitelet = TH.helloWorldSitelet
-//    let contentMappedSitelet =
-//        Sitelet.MapContent (fun _ -> box )
+[<Test>]
+let ``Json api test`` () =
+    let ep = JsonEndPoint.JsonEP { A = "hello"; B = 123; C = false }
+    let router = Router.Infer<JsonEndPoint>()
+    router.Link ep |> should equal "/json"
+
+//[<Test>]
+//let ``Map test`` () =
+//    let sitelet = Sitelet.Map (fun _ -> TestEndPoint2.Ep1) (fun _ -> TestEndPoint.Ep1) TH.helloWorldSitelet
+//    let link = sitelet.Router.Link TestEndPoint2.Ep1
+//    link.Value.ToString() |> should equal "/test1"
+
+//    let req = TH.sampleHttpRequest ()
+//    req.Path <- PathString "/mapped"
+//    sitelet.Router.Route 
