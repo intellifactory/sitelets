@@ -44,7 +44,7 @@ module Middleware =
             Func<_,_,_>(fun (httpCtx: HttpContext) (next: Func<Task>) ->
                 
                 let req = httpCtx.Request
-                match sitelet.Router.Route req with
+                match sitelet.Router.Route <| RoutedHttpRequest req with
                 | Some endpoint ->
                     let ctx = SiteletHelper.createContext sitelet httpCtx
                     let content = sitelet.Controller ctx endpoint

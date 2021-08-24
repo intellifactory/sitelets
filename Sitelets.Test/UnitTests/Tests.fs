@@ -42,11 +42,11 @@ module TH = UnitTestHelpers
 let ``Hello World routing test`` () =
     let req = TH.sampleHttpRequest ()
 
-    TH.helloWorldSitelet.Router.Route req
+    TH.helloWorldSitelet.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep1)
     
     req.Path <- PathString("/test2")
-    TH.helloWorldSitelet.Router.Route req
+    TH.helloWorldSitelet.Router.Route <| RoutedHttpRequest req
     |> should equal None
 
 [<Test>]
@@ -66,7 +66,7 @@ let ``Shifting test`` () =
     let link = shiftedSite.Router.Link(TestEndPoint.Ep1)
     link.Value.ToString() |> should equal "/shifted/test1"
     req.Path <- PathString("/shifted/test1")
-    let routedReq = shiftedSite.Router.Route req
+    let routedReq = shiftedSite.Router.Route <| RoutedHttpRequest req
     routedReq |> should equal (Some TestEndPoint.Ep1)
 
     let furtherShiftedSite = shiftedSite.Shift "extrashift"
@@ -74,7 +74,7 @@ let ``Shifting test`` () =
     let link = furtherShiftedSite.Router.Link(TestEndPoint.Ep1)
     link.Value.ToString() |> should equal "/extrashift/shifted/test1"
     req.Path <- PathString("/extrashift/shifted/test1")
-    let fortherRoutedReq = furtherShiftedSite.Router.Route req
+    let fortherRoutedReq = furtherShiftedSite.Router.Route <| RoutedHttpRequest req
     fortherRoutedReq |> should equal (Some TestEndPoint.Ep1)
 
 [<Test>]
@@ -94,11 +94,11 @@ let ``Infer test`` () =
 
     let req = TH.sampleHttpRequest ()
     req.Path <- PathString "/infer1"
-    inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E1)
+    inferSitelet.Router.Route <| RoutedHttpRequest req |> should equal (Some TestInferEndpoint.E1)
     req.Path <- PathString "/infer2"
-    inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E2)
+    inferSitelet.Router.Route <| RoutedHttpRequest req |> should equal (Some TestInferEndpoint.E2)
     req.Path <- PathString "/infer3"
-    inferSitelet.Router.Route req |> should equal (Some TestInferEndpoint.E3)
+    inferSitelet.Router.Route <| RoutedHttpRequest req |> should equal (Some TestInferEndpoint.E3)
 
 [<Test>]
 let ``Sum Test`` () =
@@ -112,10 +112,10 @@ let ``Sum Test`` () =
     let link2 = summedSitelet.Router.Link TestEndPoint.Ep2
     link2.Value.ToString() |> should equal "/test2"
     let req = TH.sampleHttpRequest ()
-    summedSitelet.Router.Route req
+    summedSitelet.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep1)
     req.Path <- PathString "/test2"
-    summedSitelet.Router.Route req
+    summedSitelet.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep2)
 
     let shiftedHelloWorldSite =
@@ -128,13 +128,13 @@ let ``Sum Test`` () =
             TH.helloWorldSitelet2
         ]
     req.Path <- PathString "/shifted/test1"
-    shiftedSum.Router.Route req
+    shiftedSum.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep1)
     req.Path <- PathString "/test1"
-    shiftedSum.Router.Route req
+    shiftedSum.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep1)
     req.Path <- PathString "/test2"
-    shiftedSum.Router.Route req
+    shiftedSum.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep2)
     //req.Path <- PathString "/shifted/test2"
     //shiftedSum.Router.Route req

@@ -82,12 +82,12 @@ module internal ServerInferredOperators =
                 Body = this.Body
             } : Route
 
-        static member FromWSRequest(r: HttpRequest) =
-            let p = HttpHelpers.UrlFromRequest r
+        static member FromWSRequest(r: IHttpRequest) =
+            let p = r.Path
             {
                 Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-                QueryArgs = HttpHelpers.CollectionToMap r.Query
-                FormData = HttpHelpers.CollectionToMap r.Form
+                QueryArgs = r.Query
+                FormData = r.Form
                 Method = Some (r.Method)
                 Body = lazy r.Body.ToString()
                 Result = StrictMode

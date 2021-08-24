@@ -91,7 +91,7 @@ module SiteletHelper =
         fun (next: SiteletHttpFunc) ->
             let handleSitelet (httpCtx: HttpContext) =
                 let req = httpCtx.Request
-                match sl.Router.Route req with
+                match sl.Router.Route <| RoutedHttpRequest req with
                 | Some endpoint ->
                     let ctx = createContext sl httpCtx
                     let content = sl.Controller ctx endpoint

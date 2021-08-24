@@ -22,11 +22,7 @@ namespace Sitelets
 
 /// Defines HTTP-related functionality.
 module HttpHelpers =
-    open System
     open System.Collections.Generic
-    open System.Collections.Specialized
-    open System.IO
-    open System.Threading.Tasks
     open Microsoft.AspNetCore.Http
 
     type SV = Microsoft.Extensions.Primitives.StringValues
@@ -51,7 +47,12 @@ module HttpHelpers =
             KeyValuePair (k, Microsoft.Extensions.Primitives.StringValues v)
             )
 
-    let UrlFromRequest (r: HttpRequest) = r.Path.ToString()
+[<AutoOpen>]
+module RoutedRequest =
+    open System.Collections.Generic
+    open Microsoft.AspNetCore.Http
+    open HttpHelpers
+    open System.Threading.Tasks
 
     type IHttpRequest =
         abstract member Body: string
@@ -66,12 +67,11 @@ module HttpHelpers =
         abstract member Scheme: string
 
     type RoutedHttpRequest (req: HttpRequest) =
+        let mutable bodyText = null : Task<string>
+
         interface IHttpRequest with
             override x.Body =
-                use memStr = new System.IO.MemoryStream()
-                req.Body.CopyTo memStr
-                use sr = new System.IO.StreamReader(memStr)
-                sr.ReadToEnd()
+                x.BodyText
             override x.Cookies = CollectionToMap2 req.Cookies
             override x.Form = CollectionToMap req.Form
             override x.Headers = CollectionToMap req.Headers
@@ -81,3 +81,29 @@ module HttpHelpers =
             override x.PathBase = req.PathBase.ToString()
             override x.Query = CollectionToMap req.Query
             override x.Scheme = req.Scheme
+
+        member x.BodyText =
+            x.BodyTextAsync |> Async.RunSynchronously
+
+        member x.BodyTextAsync =
+            if isNull bodyText then
+                let i = req.Body
+                if isNull i then
+                    bodyText <- Task.FromResult ""    
+                else
+                    let reader = new System.IO.StreamReader(i, System.Text.Encoding.UTF8, false, 1024, leaveOpen = true)
+                    bodyText <- reader.ReadToEndAsync()
+            bodyText |> Async.AwaitTask
+
+    type RHRWithPath (ireq: IHttpRequest, p: string) =
+        interface IHttpRequest with
+            override x.Body = ireq.Body
+            override x.Cookies = ireq.Cookies
+            override x.Form = ireq.Form
+            override x.Headers = ireq.Headers
+            override x.Host = ireq.Host
+            override x.Method = ireq.Method
+            override x.Path = p
+            override x.PathBase = ireq.PathBase
+            override x.Query = ireq.Query
+            override x.Scheme = ireq.Scheme

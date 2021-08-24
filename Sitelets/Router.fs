@@ -360,14 +360,14 @@ type Route =
             QueryArgs = q
         }
 
-    static member FromRequest(r: HttpRequest) =
-        let p = HttpHelpers.UrlFromRequest r
+    static member FromRequest(r: IHttpRequest) =
+        let p = r.Path
         {
             Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-            QueryArgs = HttpHelpers.CollectionToMap r.Query
-            FormData = if r.HasFormContentType then HttpHelpers.CollectionToMap r.Form else Map.empty
-            Method = Some (r.Method.ToString())
-            Body = lazy r.Body.ToString()
+            QueryArgs = r.Query
+            FormData = r.Form
+            Method = Some (r.Method)
+            Body = lazy r.Body
         }
 
     static member FromHash(path: string, ?strict: bool) =
@@ -395,7 +395,7 @@ module internal List =
         | _ -> None
 
 type IRouter<'T> =
-    abstract Route : HttpRequest -> option<'T>
+    abstract Route : IHttpRequest -> option<'T>
     abstract Link : 'T -> option<System.Uri>
 
 type Router =
@@ -512,7 +512,7 @@ module Router =
         }
 
     /// Creates a fully customized router.
-    let New (route: HttpRequest -> option<'T>) (link: 'T -> option<System.Uri>) =
+    let New (route: IHttpRequest -> option<'T>) (link: 'T -> option<System.Uri>) =
         { new IRouter<'T> with
             member this.Route req = route req
             member this.Link e = link e
@@ -887,7 +887,7 @@ type Router with
     static member Empty<'T when 'T: equality>() =
         Router.Empty<'T>
 
-    static member New(route: System.Func<HttpRequest, 'T>, link: System.Func<'T, System.Uri>) =
+    static member New(route: System.Func<IHttpRequest, 'T>, link: System.Func<'T, System.Uri>) =
         Router.New (route.Invoke >> Option.ofObj) (link.Invoke >> Option.ofObj)
 
     static member Method(method:string) =
@@ -1020,11 +1020,10 @@ module IRouter =
                 makeUri (joinWithSlash prefix (path loc) |> trimFinalSlash)
         { new IRouter<'T> with
             member this.Route req =
-                //let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
-                let p = HttpHelpers.UrlFromRequest req
+                let p = req.Path.Substring prefix.Length
                 if p.StartsWith prefix then
-                    req.Path <- p.Substring prefix.Length |> PathString
-                    router.Route req
+                    let newReq = RHRWithPath (req, p)
+                    router.Route newReq
                 else
                     None
             member this.Link e = router.Link e |> Option.map shift
