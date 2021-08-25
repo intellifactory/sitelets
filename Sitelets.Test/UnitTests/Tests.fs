@@ -255,3 +255,24 @@ let ``Map Test`` () =
     req.Path <- PathString "/test1"
     sitelet.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint2.Ep1)
+
+[<Test; Category("Sitelet Tests")>]
+let ``TryMap Test`` () =
+    true |> should equal true
+
+[<Test; Category("Sitelet Tests")>]
+let ``Embed Test`` () =
+    true |> should equal true
+
+[<Test; Category("Sitelet Tests")>]
+let ``InferWithCustomErrors Test`` () =
+    true |> should equal true
+
+[<Test; Category("Sitelet Tests")>]
+let ``InferPartial Test`` () =
+    true |> should equal true
+
+// This is probably part of integration test
+[<Test; Category("Sitelet Tests")>]
+let ``Protect Test`` () =
+    true |> should equal true
