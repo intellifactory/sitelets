@@ -83,8 +83,8 @@ module SiteletHelper =
         let link (x: 'T) =
             match sl.Router.Link x with
             | None -> failwithf "Failed to link to %O" (box x)
-            | Some loc when loc.IsAbsoluteUri -> string loc
-            | Some loc -> appPath ++ string loc
+            | Some loc when HttpHelpers.IsAbsoluteUrl loc -> loc
+            | Some loc -> appPath ++ loc
 
         {
             Link = link

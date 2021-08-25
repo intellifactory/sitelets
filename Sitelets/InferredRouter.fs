@@ -546,7 +546,7 @@ module internal ServerInferredOperators =
             member this.Link e =
                 let w = PathWriter.New(true)
                 router.IWrite(w, box e)
-                Some (System.Uri(w.ToLink(), System.UriKind.Relative))
+                Some (w.ToLink())
         }
 
     let IJson<'T when 'T: equality> : InferredRouter =

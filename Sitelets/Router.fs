@@ -385,7 +385,7 @@ module internal List =
 
 type IRouter<'T> =
     abstract Route : IHttpRequest -> option<'T>
-    abstract Link : 'T -> option<System.Uri>
+    abstract Link : 'T -> option<string>
 
 type Router =
     {
@@ -486,7 +486,7 @@ and Router<'T when 'T: equality> =
             this.Parse path
             |> Seq.tryPick (fun (path, value) -> if List.isEmpty path.Segments then Some value else None)
         member this.Link ep =
-            this.Write ep |> Option.map (fun p -> System.Uri((Route.Combine p).ToLink(), System.UriKind.Relative))
+            this.Write ep |> Option.map (fun p -> (Route.Combine p).ToLink())
         
 module Router =
     let Combine (a: Router<'A>) (b: Router<'B>) = a / b
@@ -501,7 +501,7 @@ module Router =
         }
 
     /// Creates a fully customized router.
-    let New (route: IHttpRequest -> option<'T>) (link: 'T -> option<System.Uri>) =
+    let New (route: IHttpRequest -> option<'T>) (link: 'T -> option<string>) =
         { new IRouter<'T> with
             member this.Route req = route req
             member this.Link e = link e
@@ -878,7 +878,7 @@ type Router with
     static member Empty<'T when 'T: equality>() =
         Router.Empty<'T>
 
-    static member New(route: System.Func<IHttpRequest, 'T>, link: System.Func<'T, System.Uri>) =
+    static member New(route: System.Func<IHttpRequest, 'T>, link: System.Func<'T, string>) =
         Router.New (route.Invoke >> Option.ofObj) (link.Invoke >> Option.ofObj)
 
     static member Method(method:string) =
@@ -986,17 +986,7 @@ module IRouter =
             member this.Route req = router.Route req |> Option.map encode
             member this.Link e = decode e |> Option.bind router.Link
         } 
-
-    let private makeUri uri =
-        let mutable res = null
-        if Uri.TryCreate(uri, UriKind.Relative, &res) then res else
-            Uri(uri, UriKind.Absolute)
-    
-    let private path (uri: Uri) =
-        if uri.IsAbsoluteUri
-        then uri.AbsolutePath
-        else uri.OriginalString |> joinWithSlash "/"
-        
+            
     let private trimFinalSlash (s: string) =
         match s.TrimEnd('/') with
         | "" -> "/"
@@ -1004,9 +994,11 @@ module IRouter =
     
     let Shift prefix (router: IRouter<'T>) =
         let prefix = joinWithSlash "/" prefix
-        let shift (loc: System.Uri) =
-            if loc.IsAbsoluteUri then loc else
-                makeUri (joinWithSlash prefix (path loc) |> trimFinalSlash)
+        let shift (loc: string) =
+            if HttpHelpers.IsAbsoluteUrl loc then 
+                loc 
+            else
+                (joinWithSlash prefix loc |> trimFinalSlash)
         { new IRouter<'T> with
             member this.Route req =
                 let p = req.Path
