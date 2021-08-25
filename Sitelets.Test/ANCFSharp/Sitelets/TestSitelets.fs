@@ -32,6 +32,10 @@
         | Sub1 of SubEndPoint
         | Sub2 of SubEndPoint2
 
+    type FolderEndPoint =
+        | [<EndPoint "/fep1">] FEP1
+        | [<EndPoint "/fep2">] FEP2
+
     let helloWorldSite = Sitelet.Content "/hello" Endpoint.Text3 (fun _ -> box "Hello World")
 
     let unmappedSite = Sitelet.Content "/mapped" Endpoint.Mapped (fun _ -> box "Hello there")
@@ -61,7 +65,13 @@
         | Action3 -> box "Act3"
     )
 
+    let fep1Site = Sitelet.Content "/fep1" FolderEndPoint.FEP1 (fun _ -> box "folder endpoint 1")
+    let fep2Site = Sitelet.Content "/fep2" FolderEndPoint.FEP2 (fun _ -> box "folder endpoint 2")
 
+    let folder = [
+        fep1Site
+        fep2Site
+    ]
 
     let infer =
         Sitelet.Infer (fun ctx -> function

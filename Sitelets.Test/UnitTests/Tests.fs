@@ -184,6 +184,33 @@ let ``InferPartialInUnion Test`` () =
     sitelet.Router.Route <| RoutedHttpRequest req
     |> should equal None
 
+//[<Test; Category("Sitelet Tests")>]
+//let ``Empty Test`` () =
+//    let sitelet = Sitelet.Empty<string>
+//    sitelet.Router.Link "" |> should equal null
+
+[<Test; Category("Sitelet Tests")>]
+let ``Folder Test`` () =
+    let sitelet = Sitelet.Folder "/folder" folder
+    let link1 = sitelet.Router.Link FolderEndPoint.FEP1
+    link1.Value.ToString() |> should equal "/folder/fep1"
+    let link2 = sitelet.Router.Link FolderEndPoint.FEP2
+    link2.Value.ToString() |> should equal "/folder/fep2"
+
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/folder/fep1"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some FolderEndPoint.FEP1)
+    req.Path <- PathString "/folder/fep2"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some FolderEndPoint.FEP2)
+    req.Path <- PathString "/fep1"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal None
+    req.Path <- PathString "/fep2"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal None
+
 //[<Test>]
 //let ``Map test`` () =
 //    let sitelet = Sitelet.Map (fun _ -> TestEndPoint2.Ep1) (fun _ -> TestEndPoint.Ep1) TH.helloWorldSitelet
