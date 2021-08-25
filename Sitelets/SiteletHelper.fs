@@ -24,9 +24,6 @@ namespace Sitelets
 module SiteletHelper =
     open Sitelets
 
-    open System.Text.Json
-    open System.Text.Json.Serialization
-
     open System.Threading.Tasks
     open Microsoft.AspNetCore.Mvc
     open Microsoft.AspNetCore.Mvc.Abstractions
@@ -37,8 +34,6 @@ module SiteletHelper =
     type SiteletHttpFunc =  HttpContext -> SiteletHttpFuncResult
     type SiteletHttpHandler = SiteletHttpFunc -> SiteletHttpFunc
 
-    let options = JsonSerializerOptions()
-    options.Converters.Add(JsonFSharpConverter())
 
     let rec internal contentHelper (httpCtx: HttpContext) (content: obj) =
         async {
@@ -62,7 +57,7 @@ module SiteletHelper =
                     return! contentHelper httpCtx contentResult
                 else
                     httpCtx.Response.StatusCode <- StatusCodes.Status200OK
-                    do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content, options) |> Async.AwaitTask
+                    do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content) |> Async.AwaitTask
                     return None
         }
     
