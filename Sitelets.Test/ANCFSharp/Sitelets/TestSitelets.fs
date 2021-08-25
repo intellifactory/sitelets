@@ -37,6 +37,13 @@
         | [<EndPoint "/fep1">] FEP1
         | [<EndPoint "/fep2">] FEP2
 
+    type BasicEP =
+        | BasicEp1
+
+    type CustomErrorInferEP =
+        | Ep1 of ParseRequestResult<BasicEP>
+        | Ep2
+
     let helloWorldSite = Sitelet.Content "/hello" Endpoint.Text3 (fun _ -> box "Hello World")
 
     let unmappedSite = Sitelet.Content "/mapped" Endpoint.Mapped (fun _ -> box "Hello there")

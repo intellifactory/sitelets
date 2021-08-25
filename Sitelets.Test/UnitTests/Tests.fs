@@ -280,10 +280,20 @@ let ``TryMap Test`` () =
 let ``Embed Test`` () =
     true |> should equal true
 
-[<Test; Category("Sitelet Tests")>]
-let ``InferWithCustomErrors Test`` () =
-    true |> should equal true
+//[<Test; Category("Sitelet Tests")>]
+//let ``InferWithCustomErrors Test`` () =
+//    let sitelet = Sitelet.InferWithCustomErrors (fun ctx a -> box "custom error infer")
+//    let link1 = sitelet.Router.Link <| CustomErrorInferEP.Ep1 (ParseRequestResult.Success BasicEP.Ep1)
+//    link1 |> should be (ofCase <@ Some @>)
 
 [<Test; Category("Sitelet Tests")>]
 let ``InferPartial Test`` () =
-    true |> should equal true
+    let sitelet = Sitelet.InferPartial (fun _ -> TestEndPoint.Ep1) (fun _ -> Some <| HasSubEndPoint.Sub1 SubEndPoint.Action1) (fun ctx a -> box "asd")
+    let link1 = sitelet.Router.Link <| TestEndPoint.Ep1
+    link1 |> should be (ofCase <@ Some @>)
+    link1.Value.ToString() |> should equal "/Sub1/sub/act1"
+
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/Sub1/sub/act1"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some TestEndPoint.Ep1)
