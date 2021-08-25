@@ -287,8 +287,3 @@ let ``InferWithCustomErrors Test`` () =
 [<Test; Category("Sitelet Tests")>]
 let ``InferPartial Test`` () =
     true |> should equal true
-
-// This is probably part of integration test
-[<Test; Category("Sitelet Tests")>]
-let ``Protect Test`` () =
-    true |> should equal true
