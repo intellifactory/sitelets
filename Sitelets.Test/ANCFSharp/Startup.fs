@@ -48,6 +48,8 @@ type Startup private () =
 
         app.UseSitelets(TestSitelets.main) |> ignore
 
+        app.UseSitelets(TestSitelets.jsonSite) |> ignore
+
         app.UseEndpoints(fun endpoints ->
             endpoints.MapControllerRoute(
                 name = "default",

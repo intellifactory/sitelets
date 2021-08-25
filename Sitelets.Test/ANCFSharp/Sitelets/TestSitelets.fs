@@ -1,6 +1,16 @@
 ﻿module TestSitelets
     open Sitelets
 
+    type RecTest =
+        {
+            A : string
+            B : int
+            C : bool
+        }
+    
+    type JsonEndPoint =
+        | [<EndPoint "POST /json">] [<Json "record">] JsonEP of record: RecTest
+
     type Endpoint =
         | [<EndPoint "/sitelets">] Text1
         | [<EndPoint "/sitelets2">] Text2
@@ -27,6 +37,11 @@
         }
 
     let protectedSite = Sitelet.Protect filter <| Sitelet.Content "/protected" Endpoint.Protected (fun _ -> box "You are logged in!")
+
+    let jsonSite =
+        Sitelet.Infer (fun ctx -> function
+            | JsonEP o -> box o
+        )
 
     let infer =
         Sitelet.Infer (fun ctx -> function

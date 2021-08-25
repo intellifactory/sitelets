@@ -11,16 +11,6 @@ open Sitelets
 let Setup () =
     ()
 
-type RecTest =
-    {
-        A : string
-        B : int
-        C : bool
-    }
-
-type JsonEndPoint =
-    | [<EndPoint "/json">] [<Json "json">] JsonEP of json: RecTest
-
 type TestEndPoint =
     | Ep1
     | Ep2
@@ -153,12 +143,6 @@ let ``Sum Test`` () =
     req.Path <- PathString "/shifted/test2"
     shiftedSum.Router.Route <| RoutedHttpRequest req
     |> should equal None
-
-[<Test>]
-let ``Json api test`` () =
-    let ep = JsonEndPoint.JsonEP { A = "hello"; B = 123; C = false }
-    let router = Router.Infer<JsonEndPoint>()
-    router.Link ep |> should equal "/json"
 
 //[<Test>]
 //let ``Map test`` () =
