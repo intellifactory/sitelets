@@ -211,6 +211,20 @@ let ``Folder Test`` () =
     sitelet.Router.Route <| RoutedHttpRequest req
     |> should equal None
 
+[<Test; Category("Sitelet Tests")>]
+let ``New Test`` () =
+    let newSitelet = Sitelet.New TH.helloWorldSitelet.Router TH.helloWorldSitelet.Controller
+    let link = newSitelet.Router.Link TestEndPoint.Ep1
+    link |> should be (ofCase <@ Some @>)
+    link.Value.ToString() |> should equal "/test1"
+
+    newSitelet.Router.Route <| (RoutedHttpRequest <| TH.sampleHttpRequest ())
+    |> should equal <| Some TestEndPoint.Ep1
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/test2"
+    newSitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal <| None
+
 //[<Test>]
 //let ``Map test`` () =
 //    let sitelet = Sitelet.Map (fun _ -> TestEndPoint2.Ep1) (fun _ -> TestEndPoint.Ep1) TH.helloWorldSitelet
