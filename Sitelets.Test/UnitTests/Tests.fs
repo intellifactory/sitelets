@@ -258,7 +258,23 @@ let ``Map Test`` () =
 
 [<Test; Category("Sitelet Tests")>]
 let ``TryMap Test`` () =
-    true |> should equal true
+    let sitelet = Sitelet.TryMap (fun _ -> Some TestEndPoint2.Ep1) (fun _ -> Some TestEndPoint.Ep1) TH.helloWorldSitelet
+    let link1 = sitelet.Router.Link TestEndPoint2.Ep1
+    link1.Value.ToString() |> should equal "/test1"
+
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/test1"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some TestEndPoint2.Ep1)
+
+    let badsitelet = Sitelet.TryMap (fun _ -> None) (fun _ -> None) TH.helloWorldSitelet
+    let link1 = badsitelet.Router.Link TestEndPoint2.Ep1
+    link1 |> should be null
+
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/test1"
+    badsitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal None
 
 [<Test; Category("Sitelet Tests")>]
 let ``Embed Test`` () =
