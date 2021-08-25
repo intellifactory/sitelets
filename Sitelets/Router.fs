@@ -271,7 +271,7 @@ type Route =
         QueryArgs : Map<string, string>
         FormData : Map<string, string>
         Method : option<string> 
-        Body : Lazy<string>
+        Body : option<string>
     }
 
     static member Empty =
@@ -280,7 +280,7 @@ type Route =
             QueryArgs = Map.empty
             FormData = Map.empty
             Method = None
-            Body = Lazy.CreateFromValue null
+            Body = Some null
         }
     
     static member Segment s =
@@ -306,7 +306,7 @@ type Route =
         | 0 -> Route.Empty
         | _ ->
         let mutable method = None
-        let mutable body = null
+        let mutable body = None
         let segments = System.Collections.Generic.Queue()
         let mutable queryArgs = Map.empty
         let mutable formData = Map.empty
@@ -315,8 +315,8 @@ type Route =
             | Some _ as m ->
                 method <- m
             | _ -> ()
-            match p.Body.Value with
-            | null -> ()
+            match p.Body with
+            | None -> ()
             | b ->
                 body <- b
             queryArgs <- p.QueryArgs |> Map.foldBack Map.add queryArgs 
@@ -328,7 +328,7 @@ type Route =
             QueryArgs = queryArgs
             FormData = formData
             Method = method
-            Body = Lazy.CreateFromValue body
+            Body = body
         }
 
     static member ParseQuery(q: string) =
@@ -367,7 +367,11 @@ type Route =
             QueryArgs = r.Query
             FormData = r.Form
             Method = Some (r.Method)
-            Body = lazy r.Body
+            Body =
+                if r.IsBodyTextCompleted then
+                    Some r.BodyText.Result
+                else
+                    None
         }
 
     static member FromHash(path: string, ?strict: bool) =
@@ -624,18 +628,21 @@ module Router =
                 Seq.singleton { Route.Empty with Method = Some m }
         }
 
-    [<System.Obsolete("Do not use request body for routing.")>]
+    type BodyTextNeededForRoute () = 
+        inherit exn "This router needs body text loaded synchronously. Wait for Http.Request.BodyText to finish then try again."
+
     let Body (deserialize: string -> option<'A>) (serialize: 'A -> string) : Router<'A> =
         {
             Parse = fun path ->
-                match path.Body.Value with
-                | null -> Seq.empty
-                | x ->
+                match path.Body with
+                | None -> raise (BodyTextNeededForRoute())
+                | Some null -> Seq.empty
+                | Some x ->
                     match deserialize x with
-                    | Some b -> Seq.singleton ({ path with Body = Lazy.CreateFromValue null}, b)
+                    | Some b -> Seq.singleton ({path with Body = Some null}, b)
                     | _ -> Seq.empty
             Write = fun value ->
-                Some <| Seq.singleton { Route.Empty with Body = Lazy.CreateFromValue (serialize value) }
+                Some <| Seq.singleton { Route.Empty with Body = Some (serialize value) }
         }
 
     let FormData (item: Router<'A>) : Router<'A> =
@@ -729,7 +736,6 @@ module Router =
     let Box (router: Router<'A>): Router<obj> =
         BoxImpl (function :? 'A as v -> Some v | _ -> None) router
 
-    [<System.Obsolete("Do not use request body for routing.")>]
     let Json<'T when 'T: equality> : Router<'T> =
         Body (fun s -> try Some (Json.JsonSerializer.Deserialize<'T> s) with _ -> None) Json.JsonSerializer.Serialize<'T>
 
@@ -893,11 +899,9 @@ type Router with
     static member Method(method:string) =
         Router.Method method
 
-    [<System.Obsolete("Do not use request body for routing.")>]
     static member Body(des:System.Func<string, 'T>, ser: System.Func<'T, string>) =
         Router.Body (fun s -> des.Invoke s |> Option.ofObj) ser.Invoke 
 
-    [<System.Obsolete("Do not use request body for routing.")>]
     static member Json<'T when 'T: equality>() =
         Router.Json<'T>
 

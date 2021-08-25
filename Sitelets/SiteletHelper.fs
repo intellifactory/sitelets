@@ -94,14 +94,33 @@ module SiteletHelper =
     let sitelet (sl : Sitelet<'T>) : SiteletHttpHandler =
         fun (next: SiteletHttpFunc) ->
             let handleSitelet (httpCtx: HttpContext) =
-                let req = httpCtx.Request
-                match sl.Router.Route <| RoutedHttpRequest req with
-                | Some endpoint ->
-                    let ctx = createContext sl httpCtx
-                    let content = sl.Controller ctx endpoint
-                    let t = contentHelper httpCtx content
-                    t |> Async.StartAsTask
-                | None -> 
-                    next httpCtx
+                let req = RoutedHttpRequest httpCtx.Request :> IHttpRequest
+
+                let handleRouterResult r =
+                    match r with
+                    | Some endpoint ->
+                        let ctx = createContext sl httpCtx
+                        let content = sl.Controller ctx endpoint
+                        contentHelper httpCtx content
+                        |> Async.StartAsTask
+                    | None ->
+                        next httpCtx
                 
+                let routeWithoutBody =
+                    try
+                        Some (sl.Router.Route req)
+                    with :? Router.BodyTextNeededForRoute ->
+                        None 
+
+                match routeWithoutBody with
+                | Some r ->
+                    handleRouterResult r
+                | None -> 
+                    async {
+                        do! req.BodyText |> Async.AwaitTask |> Async.Ignore
+                        let routeWithBody = sl.Router.Route req
+                        return! handleRouterResult routeWithBody |> Async.AwaitTask  
+                    }
+                    |> Async.StartAsTask
+
             handleSitelet

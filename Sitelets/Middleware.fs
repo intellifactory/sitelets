@@ -43,14 +43,33 @@ module Middleware =
         | Some sitelet ->
             Func<_,_,_>(fun (httpCtx: HttpContext) (next: Func<Task>) ->
                 
-                let req = httpCtx.Request
-                match sitelet.Router.Route <| RoutedHttpRequest req with
-                | Some endpoint ->
-                    let ctx = SiteletHelper.createContext sitelet httpCtx
-                    let content = sitelet.Controller ctx endpoint
-                    SiteletHelper.contentHelper httpCtx content
+                let req = RoutedHttpRequest httpCtx.Request :> IHttpRequest
+
+                let handleRouterResult r =
+                    match r with
+                    | Some endpoint ->
+                        let ctx = SiteletHelper.createContext sitelet httpCtx
+                        let content = sitelet.Controller ctx endpoint
+                        SiteletHelper.contentHelper httpCtx content
+                        |> Async.StartAsTask :> Task
+                    | None -> next.Invoke()
+                
+                let routeWithoutBody =
+                    try
+                        Some (sitelet.Router.Route req)
+                    with :? Router.BodyTextNeededForRoute ->
+                        None 
+
+                match routeWithoutBody with
+                | Some r ->
+                    handleRouterResult r
+                | None -> 
+                    async {
+                        do! req.BodyText |> Async.AwaitTask |> Async.Ignore
+                        let routeWithBody = sitelet.Router.Route req
+                        do! handleRouterResult routeWithBody |> Async.AwaitTask  
+                    }
                     |> Async.StartAsTask :> Task
-                | None -> next.Invoke()
             )
 
 [<Extension>]

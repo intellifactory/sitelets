@@ -55,7 +55,8 @@ module RoutedRequest =
     open System.Threading.Tasks
 
     type IHttpRequest =
-        abstract member Body: string
+        abstract member BodyText: Task<string>
+        abstract member IsBodyTextCompleted: bool
         abstract member Cookies: Map<string, string>
         abstract member Form: Map<string, string>
         abstract member Headers: Map<string, string>
@@ -70,8 +71,17 @@ module RoutedRequest =
         let mutable bodyText = null : Task<string>
 
         interface IHttpRequest with
-            override x.Body =
-                x.BodyText
+            override x.BodyText =
+                if isNull bodyText then
+                    let i = req.Body
+                    if isNull i then
+                        bodyText <- Task.FromResult ""    
+                    else
+                        let reader = new System.IO.StreamReader(i, System.Text.Encoding.UTF8, false, 1024, leaveOpen = true)
+                        bodyText <- reader.ReadToEndAsync()
+                bodyText
+            override x.IsBodyTextCompleted =
+                not (isNull bodyText) && bodyText.IsCompleted
             override x.Cookies = CollectionToMap2 req.Cookies
             override x.Form =
                 if req.HasFormContentType then
@@ -86,22 +96,10 @@ module RoutedRequest =
             override x.Query = CollectionToMap req.Query
             override x.Scheme = req.Scheme
 
-        member x.BodyText =
-            x.BodyTextAsync |> Async.RunSynchronously
-
-        member x.BodyTextAsync =
-            if isNull bodyText then
-                let i = req.Body
-                if isNull i then
-                    bodyText <- Task.FromResult ""    
-                else
-                    let reader = new System.IO.StreamReader(i, System.Text.Encoding.UTF8, false, 1024, leaveOpen = true)
-                    bodyText <- reader.ReadToEndAsync()
-            bodyText |> Async.AwaitTask
-
     type RHRWithPath (ireq: IHttpRequest, p: string) =
         interface IHttpRequest with
-            override x.Body = ireq.Body
+            override x.BodyText = ireq.BodyText
+            override x.IsBodyTextCompleted = ireq.IsBodyTextCompleted
             override x.Cookies = ireq.Cookies
             override x.Form = ireq.Form
             override x.Headers = ireq.Headers

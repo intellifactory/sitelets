@@ -49,7 +49,7 @@ module internal ServerInferredOperators =
             QueryArgs : Map<string, string>
             FormData : Map<string, string>
             Method : option<string> 
-            Body : Lazy<string>
+            Body : option<string>
             mutable Result: ParseResult 
         }
     
@@ -59,7 +59,7 @@ module internal ServerInferredOperators =
                 QueryArgs = Map.empty
                 FormData = Map.empty
                 Method = None
-                Body = Lazy.CreateFromValue null
+                Body = Some null
                 Result = StrictMode
             }
 
@@ -89,7 +89,11 @@ module internal ServerInferredOperators =
                 QueryArgs = r.Query
                 FormData = r.Form
                 Method = Some (r.Method)
-                Body = lazy r.Body.ToString()
+                Body =
+                    if r.IsBodyTextCompleted then
+                        Some r.BodyText.Result
+                    else
+                        None
                 Result = StrictMode
             }
 
@@ -125,7 +129,7 @@ module internal ServerInferredOperators =
                     if isNull q then Map.empty else Route.ParseQuery (q.ToString())
                 FormData = Map.empty
                 Method = None
-                Body = Lazy.CreateFromValue null
+                Body = Some null
             }
 
         member this.ToLink() =
@@ -548,9 +552,10 @@ module internal ServerInferredOperators =
     let IJson<'T when 'T: equality> : InferredRouter =
         {
             IParse = fun path ->                
-                match path.Body.Value with
-                | null -> error InvalidJson path
-                | b ->
+                match path.Body with
+                | None -> raise (Router.BodyTextNeededForRoute())
+                | Some null -> error InvalidJson path
+                | Some b ->
                     try Some (JsonSerializer.Deserialize<'T> b |> box)
                     with _ -> error InvalidJson path
             IWrite = ignore
