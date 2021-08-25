@@ -24,7 +24,7 @@ open System.Text.Json.Serialization
 let options = JsonSerializerOptions()
 options.Converters.Add(JsonFSharpConverter())
 
-[<Test>]
+[<Test; Category("Hello World Tests")>]
 let ``Hello World integration test`` () =
     let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
     
@@ -39,7 +39,7 @@ let ``Hello World integration test`` () =
     }
     |> Async.StartAsTask
 
-[<Test>]
+[<Test; Category("Sitelet Tests")>]
 let ``Content test`` () =
     let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
     
@@ -52,7 +52,7 @@ let ``Content test`` () =
     }
     |> Async.StartAsTask
 
-[<Test>]
+[<Test; Category("Sitelet Tests")>]
 let ``MapContent test`` () =
     let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
     
@@ -65,7 +65,7 @@ let ``MapContent test`` () =
     }
     |> Async.StartAsTask
 
-[<Test>]
+[<Test; Category("Sitelet Tests")>]
 let ``Json api test`` () =
     let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
     
