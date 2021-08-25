@@ -1,5 +1,6 @@
 ﻿module TestSitelets
     open Sitelets
+    open System.Security.Claims
 
     type RecTest =
         {
@@ -52,7 +53,7 @@
             LoginRedirect = fun _ -> Endpoint.Login
         }
 
-    let protectedSite = Sitelet.Protect filter <| Sitelet.Content "/protected" Endpoint.Protected (fun _ -> box "You are logged in!")
+    let protectedSite = Sitelet.Protect filter "MyScheme" <| Sitelet.Content "/protected" Endpoint.Protected (fun ctx -> box <| ctx.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier))
 
     let jsonSite =
         Sitelet.Infer (fun ctx -> function

@@ -24,12 +24,12 @@ open System.Text.Json.Serialization
 let options = JsonSerializerOptions()
 options.Converters.Add(JsonFSharpConverter())
 
+let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
+
+let client = webAppFactory.CreateClient()
+
 [<Test; Category("Hello World Tests")>]
 let ``Hello World integration test`` () =
-    let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
-    
-    let client = webAppFactory.CreateClient()
-
     async {
         let! resp = client.GetAsync("/hello") |> Async.AwaitTask
         resp.IsSuccessStatusCode |> should be True
@@ -41,9 +41,6 @@ let ``Hello World integration test`` () =
 
 [<Test; Category("Sitelet Tests")>]
 let ``Content test`` () =
-    let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
-    
-    let client = webAppFactory.CreateClient()
 
     async {
         let! resp = client.GetAsync("/hello") |> Async.AwaitTask
@@ -54,9 +51,6 @@ let ``Content test`` () =
 
 [<Test; Category("Sitelet Tests")>]
 let ``MapContent test`` () =
-    let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
-    
-    let client = webAppFactory.CreateClient()
 
     async {
         let! resp = client.GetAsync("/mapped") |> Async.AwaitTask
@@ -67,9 +61,6 @@ let ``MapContent test`` () =
 
 [<Test; Category("Sitelet Tests")>]
 let ``Json api test`` () =
-    let webAppFactory = new WebApplicationFactory<ANCFSharp.Startup>()
-    
-    let client = webAppFactory.CreateClient()
 
     async {
         let post : TestSitelets.RecTest = {A = "hello"; B = 123; C = true}
@@ -82,5 +73,16 @@ let ``Json api test`` () =
         record.A |> should equal "hello"
         record.B |> should equal 123
         record.C |> should equal true
+    }
+    |> Async.StartAsTask
+
+[<Test; Category("Sitelet Tests")>]
+let ``Protect test`` () =
+    async {
+        client.DefaultRequestHeaders.Add("X-base-Token", ["23443"; "Tamas"; "asd@gamil.com"])
+        let! resp = client.GetAsync("/protected") |> Async.AwaitTask
+        resp.IsSuccessStatusCode |> should be True
+        let! content = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+        content |> should equal "23443"
     }
     |> Async.StartAsTask

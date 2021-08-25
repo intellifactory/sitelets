@@ -52,7 +52,7 @@ type Sitelet<'T when 'T : equality> =
     member Box : unit -> Sitelet<obj>
     
     /// Constructs a protected sitelet given the filter specification.
-    member Protect : verifyUser: Func<string, bool> * loginRedirect: Func<'T, 'T> -> Sitelet<'T>
+    member Protect : verifyUser: Func<string, bool> * loginRedirect: Func<'T, 'T> * scheme: string -> Sitelet<'T>
 
     /// Maps over the sitelet endpoint type. Can be partial if embed/unembed returns null.
     member Map<'U when 'U : equality> : embed: Func<'T, 'U> * unembed: Func<'U, 'T> -> Sitelet<'U>
@@ -79,9 +79,10 @@ module Sitelet =
             LoginRedirect : 'T -> 'T
         }
 
-    /// Constructs a protected sitelet given the filter specification.
+    /// Constructs a protected sitelet given the filter specification and authentication scheme.
     val Protect<'T when 'T : equality> :
         filter: Filter<'T> ->
+        scheme: string ->
         site: Sitelet<'T> ->
         Sitelet<'T>
 

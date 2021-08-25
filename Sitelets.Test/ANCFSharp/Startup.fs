@@ -8,10 +8,13 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.HttpsPolicy;
 open Microsoft.AspNetCore.Mvc
+open Microsoft.AspNetCore.Authentication
+open Microsoft.AspNetCore.Authentication.JwtBearer
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Sitelets
+open AuthenticationHandlerModel
 
 type Startup private () =
     new (configuration: IConfiguration) as this =
@@ -23,7 +26,10 @@ type Startup private () =
         // Add framework services.
         services.AddControllersWithViews().AddRazorRuntimeCompilation() |> ignore
         services.AddRazorPages() |> ignore
-        services.AddAuthentication()
+        services.AddAuthentication(fun options ->
+            options.DefaultScheme <- "MyScheme"
+        )
+            .AddScheme<ValidateHashAuthenticationSchemeOptions, ValidateHashAuthenticationHandler>("MyScheme", fun op -> ())
             .AddCookie()
         |> ignore
 

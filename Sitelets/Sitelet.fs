@@ -86,7 +86,7 @@ module Sitelet =
         }
 
     /// Constructs a protected sitelet given the filter specification.
-    let Protect (filter: Filter<'T>) (site: Sitelet<'T>)
+    let Protect (filter: Filter<'T>) (scheme: string) (site: Sitelet<'T>)
         : Sitelet<'T> =
         {
             Router = site.Router
@@ -96,11 +96,11 @@ module Sitelet =
                     RedirectResult (ctx.Link endpoint) |> box
                 async {
                     let! loggedIn = 
-                        let authHandler = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationHandler>) :?> IAuthenticationHandler
-                        if not <| isNull authHandler then
-                            authHandler.AuthenticateAsync() |> Async.AwaitTask
+                        let authService = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationService>) :?> AuthenticationService
+                        if not <| isNull authService then
+                            authService.AuthenticateAsync(ctx.HttpContext, scheme) |> Async.AwaitTask
                         else
-                            failwith "Authentication handler not found"
+                            failwith "Authentication service not found"
                     if loggedIn.Succeeded then
                         let user = loggedIn.Principal.Identity.Name
                         if prot.VerifyUser user then
@@ -287,11 +287,11 @@ type Sitelet<'T when 'T : equality> with
     member this.Box() =
         Sitelet.Box this
 
-    member this.Protect (verifyUser: Func<string, bool>, loginRedirect: Func<'T, 'T>) =
+    member this.Protect (verifyUser: Func<string, bool>, loginRedirect: Func<'T, 'T>, scheme: string) =
         this |> Sitelet.Protect {
             VerifyUser = verifyUser.Invoke 
             LoginRedirect = loginRedirect.Invoke
-        }
+        } scheme
 
     member this.Map (embed: Func<'T, 'U>, unembed: Func<'U, 'T>) =
         Sitelet.TryMap (embed.Invoke >> ofObjNoConstraint) (unembed.Invoke >> ofObjNoConstraint) this
