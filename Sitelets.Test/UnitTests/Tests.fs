@@ -225,6 +225,26 @@ let ``New Test`` () =
     newSitelet.Router.Route <| RoutedHttpRequest req
     |> should equal <| None
 
+[<Test; Category("Sitelet Tests")>]
+let ``Box/Unbox Test`` () =
+    // box
+    let boxedSite = Sitelet.Box TH.helloWorldSitelet
+    let link = boxedSite.Router.Link <| box TestEndPoint.Ep1
+    link |> should be (ofCase <@ Some @>)
+    link.Value.ToString() |> should equal "/test1"
+
+    boxedSite.Router.Route <| (RoutedHttpRequest <| TH.sampleHttpRequest ())
+    |> should equal <| (Some <| box TestEndPoint.Ep1)
+
+    // unbox
+    let unboxedSite = Sitelet.Unbox boxedSite
+    let link = unboxedSite.Router.Link TestEndPoint.Ep1
+    link |> should be (ofCase <@ Some @>)
+    link.Value.ToString() |> should equal "/test1"
+
+    unboxedSite.Router.Route <| (RoutedHttpRequest <| TH.sampleHttpRequest ())
+    |> should equal <| Some TestEndPoint.Ep1
+
 //[<Test>]
 //let ``Map test`` () =
 //    let sitelet = Sitelet.Map (fun _ -> TestEndPoint2.Ep1) (fun _ -> TestEndPoint.Ep1) TH.helloWorldSitelet
