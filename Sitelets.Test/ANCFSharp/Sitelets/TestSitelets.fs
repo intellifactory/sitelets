@@ -25,8 +25,12 @@
         | [<EndPoint "/sub/act2">] Action2
         | [<EndPoint "/sub/act3">] Action3
 
+    type SubEndPoint2 =
+        | [<EndPoint "/sub/sampleep">] SampleEp
+
     type HasSubEndPoint =
         | Sub1 of SubEndPoint
+        | Sub2 of SubEndPoint2
 
     let helloWorldSite = Sitelet.Content "/hello" Endpoint.Text3 (fun _ -> box "Hello World")
 
@@ -56,6 +60,8 @@
         | Action2 -> box "Act2"
         | Action3 -> box "Act3"
     )
+
+
 
     let infer =
         Sitelet.Infer (fun ctx -> function

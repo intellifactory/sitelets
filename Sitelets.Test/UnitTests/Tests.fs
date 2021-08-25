@@ -169,6 +169,21 @@ let ``EmbedInUnion Test`` () =
     sitelet.Router.Route <| RoutedHttpRequest req
     |> should equal (Some <| HasSubEndPoint.Sub1 SubEndPoint.Action3)
 
+[<Test; Category("Sitelet Tests")>]
+let ``InferPartialInUnion Test`` () =
+    let sitelet = Sitelet.InferPartialInUnion <@ HasSubEndPoint.Sub2 @> (fun ctx ep -> box "Yes")
+    let link = sitelet.Router.Link (HasSubEndPoint.Sub2 <| SubEndPoint2.SampleEp)
+    link |> should be (ofCase <@ Some @>)
+    link.Value.ToString() |> should equal "/sub/sampleep"
+
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/sub/sampleep"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some <| HasSubEndPoint.Sub2 SubEndPoint2.SampleEp)
+    req.Path <- PathString "/sub/act1"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal None
+
 //[<Test>]
 //let ``Map test`` () =
 //    let sitelet = Sitelet.Map (fun _ -> TestEndPoint2.Ep1) (fun _ -> TestEndPoint.Ep1) TH.helloWorldSitelet
