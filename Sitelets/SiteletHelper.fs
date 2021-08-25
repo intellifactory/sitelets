@@ -21,6 +21,7 @@
 namespace Sitelets
 
 
+
 module SiteletHelper =
     open Sitelets
 
@@ -29,6 +30,8 @@ module SiteletHelper =
     open Microsoft.AspNetCore.Mvc.Abstractions
     open Microsoft.AspNetCore.Routing
     open Microsoft.AspNetCore.Http
+    open Microsoft.Extensions.Options
+    open System.Text.Json
     
     type SiteletHttpFuncResult = Task<HttpContext option>
     type SiteletHttpFunc =  HttpContext -> SiteletHttpFuncResult
@@ -57,7 +60,8 @@ module SiteletHelper =
                     return! contentHelper httpCtx contentResult
                 else
                     httpCtx.Response.StatusCode <- StatusCodes.Status200OK
-                    do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content) |> Async.AwaitTask
+                    let jsonOptions = httpCtx.RequestServices.GetService(typeof<IOptions<JsonSerializerOptions>>) :?> IOptions<JsonSerializerOptions>;
+                    do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content, jsonOptions.Value) |> Async.AwaitTask
                     return None
         }
     
