@@ -44,7 +44,7 @@ module UnitTestHelpers =
 module TH = UnitTestHelpers
 
 [<Test; Category("Hello World Tests")>]
-let ``Hello World routing test`` () =
+let ``Hello World routing Test`` () =
     let req = TH.sampleHttpRequest ()
 
     TH.helloWorldSitelet.Router.Route <| RoutedHttpRequest req
@@ -55,7 +55,7 @@ let ``Hello World routing test`` () =
     |> should equal None
 
 [<Test; Category("Hello World Tests")>]
-let ``Hello World linking test`` () =
+let ``Hello World linking Test`` () =
     let link = TH.helloWorldSitelet.Router.Link(TestEndPoint.Ep1)
     link |> should be (ofCase <@ Some @>)
 
@@ -65,7 +65,7 @@ let ``Hello World linking test`` () =
     badlink |> should equal None
 
 [<Test; Category("Sitelet Tests")>]
-let ``Shifting test`` () =
+let ``Shifting Test`` () =
     let shiftedSite = TH.helloWorldSitelet.Shift "shifted"
     let req = TH.sampleHttpRequest ()
     let link = shiftedSite.Router.Link(TestEndPoint.Ep1)
@@ -83,7 +83,7 @@ let ``Shifting test`` () =
     fortherRoutedReq |> should equal (Some TestEndPoint.Ep1)
 
 [<Test; Category("Sitelet Tests")>]
-let ``Infer test`` () =
+let ``Infer Test`` () =
     let inferSitelet =
         Sitelet.Infer (fun ctx -> function
             | E1 -> box "Infer endpoint 1"
@@ -245,12 +245,13 @@ let ``Box/Unbox Test`` () =
     unboxedSite.Router.Route <| (RoutedHttpRequest <| TH.sampleHttpRequest ())
     |> should equal <| Some TestEndPoint.Ep1
 
-//[<Test>]
-//let ``Map test`` () =
-//    let sitelet = Sitelet.Map (fun _ -> TestEndPoint2.Ep1) (fun _ -> TestEndPoint.Ep1) TH.helloWorldSitelet
-//    let link = sitelet.Router.Link TestEndPoint2.Ep1
-//    link.Value.ToString() |> should equal "/test1"
+[<Test; Category("Sitelet Tests")>]
+let ``Map Test`` () =
+    let sitelet = Sitelet.Map (fun _ -> TestEndPoint2.Ep1) (fun _ -> TestEndPoint.Ep1) TH.helloWorldSitelet
+    let link1 = sitelet.Router.Link TestEndPoint2.Ep1
+    link1.Value.ToString() |> should equal "/test1"
 
-//    let req = TH.sampleHttpRequest ()
-//    req.Path <- PathString "/mapped"
-//    sitelet.Router.Route 
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/test1"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some TestEndPoint2.Ep1)
