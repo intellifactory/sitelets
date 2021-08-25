@@ -42,7 +42,7 @@ module UnitTestHelpers =
 
 module TH = UnitTestHelpers
 
-[<Test>]
+[<Test; Category("Hello World Tests")>]
 let ``Hello World routing test`` () =
     let req = TH.sampleHttpRequest ()
 
@@ -53,7 +53,7 @@ let ``Hello World routing test`` () =
     TH.helloWorldSitelet.Router.Route <| RoutedHttpRequest req
     |> should equal None
 
-[<Test>]
+[<Test; Category("Hello World Tests")>]
 let ``Hello World linking test`` () =
     let link = TH.helloWorldSitelet.Router.Link(TestEndPoint.Ep1)
     link |> should be (ofCase <@ Some @>)
@@ -63,7 +63,7 @@ let ``Hello World linking test`` () =
     let badlink = TH.helloWorldSitelet.Router.Link(TestEndPoint.Ep2)
     badlink |> should equal None
 
-[<Test>]
+[<Test; Category("Sitelet Tests")>]
 let ``Shifting test`` () =
     let shiftedSite = TH.helloWorldSitelet.Shift "shifted"
     let req = TH.sampleHttpRequest ()
@@ -81,7 +81,7 @@ let ``Shifting test`` () =
     let fortherRoutedReq = furtherShiftedSite.Router.Route <| RoutedHttpRequest req
     fortherRoutedReq |> should equal (Some TestEndPoint.Ep1)
 
-[<Test>]
+[<Test; Category("Sitelet Tests")>]
 let ``Infer test`` () =
     let inferSitelet =
         Sitelet.Infer (fun ctx -> function
@@ -104,7 +104,7 @@ let ``Infer test`` () =
     req.Path <- PathString "/infer3"
     inferSitelet.Router.Route <| RoutedHttpRequest req |> should equal (Some TestInferEndpoint.E3)
 
-[<Test>]
+[<Test; Category("Sitelet Tests")>]
 let ``Sum Test`` () =
     let summedSitelet =
         Sitelet.Sum [
