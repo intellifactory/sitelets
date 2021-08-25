@@ -20,6 +20,14 @@
         | Login
         | Mapped
 
+    type SubEndPoint =
+        | [<EndPoint "/sub/act1">] Action1
+        | [<EndPoint "/sub/act2">] Action2
+        | [<EndPoint "/sub/act3">] Action3
+
+    type HasSubEndPoint =
+        | Sub1 of SubEndPoint
+
     let helloWorldSite = Sitelet.Content "/hello" Endpoint.Text3 (fun _ -> box "Hello World")
 
     let unmappedSite = Sitelet.Content "/mapped" Endpoint.Mapped (fun _ -> box "Hello there")
@@ -42,6 +50,12 @@
         Sitelet.Infer (fun ctx -> function
             | JsonEP o -> box o
         )
+
+    let subEPSite = Sitelet.Infer (fun ctx -> function
+        | Action1 -> box "Act1"
+        | Action2 -> box "Act2"
+        | Action3 -> box "Act3"
+    )
 
     let infer =
         Sitelet.Infer (fun ctx -> function

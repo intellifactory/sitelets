@@ -6,6 +6,7 @@ open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Mvc.Testing
 open Sitelets
+open TestSitelets
 
 [<SetUp>]
 let Setup () =
@@ -143,6 +144,30 @@ let ``Sum Test`` () =
     req.Path <- PathString "/shifted/test2"
     shiftedSum.Router.Route <| RoutedHttpRequest req
     |> should equal None
+
+[<Test; Category("Sitelet Tests")>]
+let ``EmbedInUnion Test`` () =
+    let sitelet = Sitelet.EmbedInUnion <@ HasSubEndPoint.Sub1 @> subEPSite
+    let link1 = sitelet.Router.Link (HasSubEndPoint.Sub1 <| SubEndPoint.Action1)
+    link1 |> should be (ofCase <@ Some @>)
+    link1.Value.ToString() |> should equal "/sub/act1"
+    let link2 = sitelet.Router.Link (HasSubEndPoint.Sub1 <| SubEndPoint.Action2)
+    link2 |> should be (ofCase <@ Some @>)
+    link2.Value.ToString() |> should equal "/sub/act2"
+    let link3 = sitelet.Router.Link (HasSubEndPoint.Sub1 <| SubEndPoint.Action3)
+    link3 |> should be (ofCase <@ Some @>)
+    link3.Value.ToString() |> should equal "/sub/act3"
+
+    let req = TH.sampleHttpRequest ()
+    req.Path <- PathString "/sub/act1"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some <| HasSubEndPoint.Sub1 SubEndPoint.Action1)
+    req.Path <- PathString "/sub/act2"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some <| HasSubEndPoint.Sub1 SubEndPoint.Action2)
+    req.Path <- PathString "/sub/act3"
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some <| HasSubEndPoint.Sub1 SubEndPoint.Action3)
 
 //[<Test>]
 //let ``Map test`` () =
