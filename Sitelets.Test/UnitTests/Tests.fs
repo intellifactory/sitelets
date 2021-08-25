@@ -278,7 +278,14 @@ let ``TryMap Test`` () =
 
 [<Test; Category("Sitelet Tests")>]
 let ``Embed Test`` () =
-    true |> should equal true
+    let sitelet = Sitelet.Embed (fun _ -> BasicEP.BasicEp1) (fun _ -> Some TestEndPoint.Ep1) TH.helloWorldSitelet
+    let link = sitelet.Router.Link BasicEP.BasicEp1
+    link |> should be (ofCase <@ Some @>)
+    link.Value.ToString() |> should equal "/test1"
+
+    let req = TH.sampleHttpRequest ()
+    sitelet.Router.Route <| RoutedHttpRequest req
+    |> should equal (Some BasicEP.BasicEp1)
 
 //[<Test; Category("Sitelet Tests")>]
 //let ``InferWithCustomErrors Test`` () =
