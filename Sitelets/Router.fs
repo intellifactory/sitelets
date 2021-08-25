@@ -89,21 +89,6 @@ type ParseRequestResult<'T> =
         | MissingQueryParameter (a, _)
         | MissingFormData (a, _) -> a
 
-    [<System.Obsolete "Use Value instead">]
-    member this.Action = this.Value
-
-[<System.Obsolete "Use ParseRequestResult instead of ActionEncoding.DecodeResult">]
-/// For back-compatibility only, use ParseRequestResult instead of ActionEncoding.DecodeResult
-module ActionEncoding =
-
-    type DecodeResult<'T> = ParseRequestResult<'T>
-
-    let Success endpoint = ParseRequestResult.Success endpoint
-    let InvalidMethod (endpoint, ``method``) = ParseRequestResult.InvalidMethod(endpoint, ``method``)
-    let InvalidJson endpoint = ParseRequestResult.InvalidJson endpoint
-    let MissingQueryParameter (endpoint, queryParam) = ParseRequestResult.MissingQueryParameter(endpoint, queryParam)
-    let MissingFormData (endpoint, formFieldName) = ParseRequestResult.MissingFormData(endpoint, formFieldName)
-
 module StringEncoding =
 
     let isUnreserved isLast c =

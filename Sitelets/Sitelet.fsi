@@ -132,18 +132,8 @@ module Sitelet =
     val Box<'T when 'T : equality> :
         sitelet: Sitelet<'T> -> Sitelet<obj>
 
-    /// Boxes the sitelet endpoint type to Object type.
-    [<Obsolete "Use Sitelet.Box instead.">]
-    val Upcast<'T when 'T : equality> :
-        sitelet: Sitelet<'T> -> Sitelet<obj>
-
     /// Reverses the Box operation on the sitelet.
     val Unbox<'T when 'T : equality> :
-        sitelet: Sitelet<obj> -> Sitelet<'T>
-
-    /// Reverses the Box operation on the sitelet.
-    [<Obsolete "Use Sitelet.Unbox instead, now safe, does a type check after parsing.">]
-    val UnsafeDowncast<'T when 'T : equality> :
         sitelet: Sitelet<obj> -> Sitelet<'T>
 
     /// Constructs a sitelet with an inferred router and a given controller function.

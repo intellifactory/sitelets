@@ -23,8 +23,6 @@ namespace Sitelets
 open Microsoft.AspNetCore.Mvc
 open Microsoft.AspNetCore.Authentication
 
-#nowarn "44" // Obsolete CustomContent, CustomContentAsync, PageContent, PageContentAsync
-
 open System
 open System.Threading.Tasks
 open System.Runtime.CompilerServices
@@ -216,8 +214,6 @@ module Sitelet =
                 sitelet.Controller (Context.Map box ctx) (unbox a)
         }
 
-    let Upcast sitelet = Box sitelet
-
     /// Reverses the Box operation on the sitelet.
     let Unbox<'T when 'T : equality> (sitelet: Sitelet<obj>) : Sitelet<'T> =
         {
@@ -225,8 +221,6 @@ module Sitelet =
             Controller = fun ctx a ->
                 sitelet.Controller (Context.Map unbox ctx) (box a)
         }
-
-    let UnsafeDowncast sitelet = Unbox sitelet
 
     /// Constructs a sitelet with an inferred router and a given controller
     /// function.
