@@ -57,7 +57,34 @@ app.UseEndpoints(fun endpoints ->
 ...
 ```
 
-After a quick build and run, if you go to the `/hello` endpoint, you will see "Hello World" printed there.
+After a quick build and run, if you go to the `/hello` endpoint, you will see "Hello World" in the response. Now this example only shows how easy it is to grab the package and use it in project. Here's a glimpse of what makes Sitelets a powerful tool:
+
+```fsharp
+
+type Pizza =
+    {
+        Customer: string
+        Size: int
+    }
+
+type EndPoint =
+    | [<Method "GET"; EndPoint "/index">] Home
+    | [<Method "GET"; EndPoint "/greet"; Query "firstname"; Query "lastname">] GreetPerson of firstname:string * lastname: string
+    | [<Method "POST"; EndPoint "/order">; Json "pizza"] Order of pizza:Pizza
+
+let inferSitelet =
+    Sitelet.Infer (fun ctx -> function
+        | Home -> // some content
+        | GreetPerson f l ->
+            // example content with the query parameters
+            sprintf "Hello %s %s" f l
+            |> box
+            // e.g   /greet?firstname=John&lastname=Doe  -> Hello John Doe
+        | Order p -> // same as above but json comes in request body
+    )
+```
+
+Please check the [documentation]() for more information.
 
 ## Working with other ANC web frameworks
 
@@ -92,8 +119,8 @@ let webApp =
             choose [
                 route "/" >=> indexHandler "world"
                 routef "/hello/%s" indexHandler
-                SiteletHelper.sitelet inferredSite
             ]
+        SiteletHelper.sitelet inferredSite
         setStatusCode 404 >=> text "Not Found" ]
 ```
 
