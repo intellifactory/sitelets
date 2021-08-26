@@ -304,3 +304,18 @@ let ``InferPartial Test`` () =
     req.Path <- PathString "/Sub1/sub/act1"
     sitelet.Router.Route <| RoutedHttpRequest req
     |> should equal (Some TestEndPoint.Ep1)
+
+let getLink (router: Router<'T>) (endpoint: 'T) =
+    Router.Write router endpoint
+    |> function
+        | Some r -> r.ToLink()
+        | None -> ""
+
+type QueryEP =
+    | [<EndPoint "/query"; Query "s"; Query "n">] UQuery of s: string * n: int
+
+[<Test>]
+let ``Request test`` () =
+    let router = Router.Infer()
+    let route = getLink router (QueryEP.UQuery("asd",5))
+    route |> should equal "/query?n=5&s=asd"
