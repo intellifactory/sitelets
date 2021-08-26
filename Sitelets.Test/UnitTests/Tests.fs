@@ -289,10 +289,10 @@ let ``Embed Test`` () =
 
 //[<Test; Category("Sitelet Tests")>]
 //let ``InferWithCustomErrors Test`` () =
-//    let sitelet = Sitelet.InferWithCustomErrors (fun ctx a -> box "custom error infer")
-//    let link1 = sitelet.Router.Link <| CustomErrorInferEP.Ep1 (ParseRequestResult.Success BasicEP.Ep1)
-//    link1 |> should be (ofCase <@ Some @>)
-
+//    let sitelet = Sitelet.InferWithCustomErrors (fun (ctx: Context<BasicEP>) (a: ParseRequestResult<BasicEP>) -> box "custom error infer")
+//    let link = sitelet.Router.Link <| ParseRequestResult.Success BasicEP.BasicEp1
+//    link |> should be (ofCase <@ Some @>)
+    
 [<Test; Category("Sitelet Tests")>]
 let ``InferPartial Test`` () =
     let sitelet = Sitelet.InferPartial (fun _ -> TestEndPoint.Ep1) (fun _ -> Some <| HasSubEndPoint.Sub1 SubEndPoint.Action1) (fun ctx a -> box "asd")

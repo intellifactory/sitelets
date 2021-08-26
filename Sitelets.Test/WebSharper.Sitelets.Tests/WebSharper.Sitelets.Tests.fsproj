@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Api.fs" />
+    <Compile Include="ApiTests.fs" />
+    <Compile Include="DateTimeFormatInfer.fs" />
+    <Compile Include="Json.fs" />
+    <Compile Include="SampleSite.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Sitelets\Sitelets.fsproj" />
+  </ItemGroup>
+</Project>
