@@ -149,8 +149,8 @@ module UrlHelpers = // HttpTODO
         regexp |> Internals.MatchToken input
             (fun (n, rest) -> Some rest)
 
-    let (|SPLIT_BY|_|) (c: char) (uri: Uri) =
-        uri.LocalPath.Split c
+    let (|SPLIT_BY|_|) (c: char) (uri: string) =
+        uri.Split c
         |> Array.filter (fun s -> s <> "")
         |> List.ofArray
         |> Some
@@ -167,18 +167,18 @@ module UrlHelpers = // HttpTODO
                 
         match req.Method with
         | "DELETE" ->
-            DELETE (allParams (), req.PathBase.ToUriComponent() |> Uri)
+            DELETE (allParams (), req.PathBase.ToUriComponent())
         | "GET" ->
-            GET (HttpHelpers.CollectionToMap req.Query |> Map.toList, req.PathBase.ToUriComponent() |> Uri)
+            GET (HttpHelpers.CollectionToMap req.Query |> Map.toList, req.PathBase.ToUriComponent())
         | "OPTIONS" ->
-            OPTIONS (allParams (), req.PathBase.ToUriComponent() |> Uri)
+            OPTIONS (allParams (), req.PathBase.ToUriComponent())
         | "POST" ->
-            POST (HttpHelpers.CollectionToMap req.Form |> Map.toList, req.PathBase.ToUriComponent() |> Uri)
+            POST (HttpHelpers.CollectionToMap req.Form |> Map.toList, req.PathBase.ToUriComponent())
         | "PUT" ->
-            PUT (allParams (), req.PathBase.ToUriComponent() |> Uri)
+            PUT (allParams (), req.PathBase.ToUriComponent())
         | "TRACE" ->
-            TRACE (allParams (), req.PathBase.ToUriComponent() |> Uri)
+            TRACE (allParams (), req.PathBase.ToUriComponent())
         // TODO: Revise.  Unfortunately, F# active patterns only allow up to 7 cases.
         | _ ->
-            SPECIAL (req.Method, allParams, req.PathBase.ToUriComponent() |> Uri)
+            SPECIAL (req.Method, allParams, req.PathBase.ToUriComponent())
 

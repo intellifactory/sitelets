@@ -47,6 +47,14 @@ module HttpHelpers =
             KeyValuePair (k, Microsoft.Extensions.Primitives.StringValues v)
             )
 
+    let IsAbsoluteUrl (url: string) =
+        if url.StartsWith ("//") then
+            true
+        else
+            match url.IndexOf("://") with
+            | -1 -> false
+            | i -> i < url.IndexOfAny([| '/'; '?'; '#' |])
+
 [<AutoOpen>]
 module RoutedRequest =
     open System.Collections.Generic
