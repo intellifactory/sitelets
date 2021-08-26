@@ -99,6 +99,29 @@ let webApp =
 
 Add the sitelet to the pipeline and we are done!
 
+## Sitelets in C#
+
+Although the focus is on the F# side, you can also use the Sitelets library in C# ASP.NET Core project. As an example:
+
+```cs
+public class TestSitelet
+    {
+        public static Sitelet<object> S =>
+        new SiteletBuilder()
+            .With("/hello", ctx =>
+                    "Hello World from C#"
+            )
+            .Install();
+    }
+```
+
 ## Contributing
 
 If you find any faults, please [submit a ticket](https://github.com/intellifactory/sitelets/issues/4).
+
+It is an open source project so anyone is more than welcome to contribute but make sure to discuss the changes before opening a PR, otherwise it might get rejected.
+
+## Links
+
+* [Nuget](#TODO)
+* [Intellifactory](https://intellifactory.com/)
