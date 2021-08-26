@@ -4,7 +4,6 @@
     <Tests>True</Tests>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Tester.fs" />
     <Compile Include="Remoting.fs" />
     <Compile Include="ClientSideJson.fs" />
     <Compile Include="HelloWorld.fs" />
