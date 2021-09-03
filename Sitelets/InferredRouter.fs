@@ -49,7 +49,7 @@ module internal ServerInferredOperators =
             QueryArgs : Map<string, string>
             FormData : Map<string, string>
             Method : option<string> 
-            Body : Lazy<string>
+            Body : option<string>
             mutable Result: ParseResult 
         }
     
@@ -59,11 +59,11 @@ module internal ServerInferredOperators =
                 QueryArgs = Map.empty
                 FormData = Map.empty
                 Method = None
-                Body = Lazy.CreateFromValue null
+                Body = Some null
                 Result = StrictMode
             }
 
-        static member OfPath(path: Route) = // HttpTODO
+        static member OfPath(path: Route) =
             {
                 Segments = path.Segments
                 QueryArgs = path.QueryArgs
@@ -73,7 +73,7 @@ module internal ServerInferredOperators =
                 Result = StrictMode
             }
 
-        member this.ToPath() = // HttpTODO
+        member this.ToPath() =
             {
                 Segments = this.Segments
                 QueryArgs = this.QueryArgs
@@ -82,22 +82,18 @@ module internal ServerInferredOperators =
                 Body = this.Body
             } : Route
 
-        static member FromWSRequest(r: HttpRequest) = // HttpTODO
-            let u = HttpHelpers.SetUri r
-            let p =
-                if u.IsAbsoluteUri then 
-                    u.AbsolutePath 
-                else 
-                    let s = u.OriginalString
-                    match s.IndexOf('?') with
-                    | -1 -> s
-                    | q -> s.Substring(0, q)
+        static member FromWSRequest(r: IHttpRequest) =
+            let p = r.Path
             {
                 Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-                QueryArgs = HttpHelpers.ToQuery r
-                FormData = HttpHelpers.ToForm r
+                QueryArgs = r.Query
+                FormData = r.Form
                 Method = Some (r.Method)
-                Body = lazy r.Body.ToString()
+                Body =
+                    if r.IsBodyTextCompleted then
+                        Some r.BodyText.Result
+                    else
+                        None
                 Result = StrictMode
             }
 
@@ -133,7 +129,7 @@ module internal ServerInferredOperators =
                     if isNull q then Map.empty else Route.ParseQuery (q.ToString())
                 FormData = Map.empty
                 Method = None
-                Body = Lazy.CreateFromValue null
+                Body = Some null
             }
 
         member this.ToLink() =
@@ -443,7 +439,7 @@ module internal ServerInferredOperators =
             IExplicitMethods = Set.add "OPTIONS" item.IExplicitMethods
         }
 
-    let IQuery key (item: InferredRouter) : InferredRouter = // HttpTODO
+    let IQuery key (item: InferredRouter) : InferredRouter =
         {
             IParse = fun path ->
                 match path.QueryArgs.TryGetValue(key) with
@@ -473,7 +469,7 @@ module internal ServerInferredOperators =
             member this.Get (o: obj) = unbox<'T option> o |> Option.map box
             member this.Some (x: obj) = Some (unbox<'T> x) |> box
 
-    let IQueryOption (itemType: System.Type) key (item: InferredRouter) : InferredRouter = // HttpTODO
+    let IQueryOption (itemType: System.Type) key (item: InferredRouter) : InferredRouter =
         let converter = 
             System.Activator.CreateInstance(typedefof<OptionConverter<_>>.MakeGenericType(itemType))
             :?> IOptionConverter
@@ -503,7 +499,7 @@ module internal ServerInferredOperators =
             IExplicitMethods = Set.empty
         }
 
-    let IQueryNullable key (item: InferredRouter) : InferredRouter = // HttpTODO
+    let IQueryNullable key (item: InferredRouter) : InferredRouter =
         {
             IParse = fun path ->
                 match path.QueryArgs.TryGetValue(key) with
@@ -550,15 +546,16 @@ module internal ServerInferredOperators =
             member this.Link e =
                 let w = PathWriter.New(true)
                 router.IWrite(w, box e)
-                Some (System.Uri(w.ToLink(), System.UriKind.Relative))
+                Some (w.ToLink())
         }
 
     let IJson<'T when 'T: equality> : InferredRouter =
         {
             IParse = fun path ->                
-                match path.Body.Value with
-                | null -> error InvalidJson path
-                | b ->
+                match path.Body with
+                | None -> raise (Router.BodyTextNeededForRoute())
+                | Some null -> error InvalidJson path
+                | Some b ->
                     try Some (JsonSerializer.Deserialize<'T> b |> box)
                     with _ -> error InvalidJson path
             IWrite = ignore

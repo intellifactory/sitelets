@@ -89,21 +89,6 @@ type ParseRequestResult<'T> =
         | MissingQueryParameter (a, _)
         | MissingFormData (a, _) -> a
 
-    [<System.Obsolete "Use Value instead">]
-    member this.Action = this.Value
-
-[<System.Obsolete "Use ParseRequestResult instead of ActionEncoding.DecodeResult">]
-/// For back-compatibility only, use ParseRequestResult instead of ActionEncoding.DecodeResult
-module ActionEncoding =
-
-    type DecodeResult<'T> = ParseRequestResult<'T>
-
-    let Success endpoint = ParseRequestResult.Success endpoint
-    let InvalidMethod (endpoint, ``method``) = ParseRequestResult.InvalidMethod(endpoint, ``method``)
-    let InvalidJson endpoint = ParseRequestResult.InvalidJson endpoint
-    let MissingQueryParameter (endpoint, queryParam) = ParseRequestResult.MissingQueryParameter(endpoint, queryParam)
-    let MissingFormData (endpoint, formFieldName) = ParseRequestResult.MissingFormData(endpoint, formFieldName)
-
 module StringEncoding =
 
     let isUnreserved isLast c =
@@ -271,7 +256,7 @@ type Route =
         QueryArgs : Map<string, string>
         FormData : Map<string, string>
         Method : option<string> 
-        Body : Lazy<string>
+        Body : option<string>
     }
 
     static member Empty =
@@ -280,7 +265,7 @@ type Route =
             QueryArgs = Map.empty
             FormData = Map.empty
             Method = None
-            Body = Lazy.CreateFromValue null
+            Body = Some null
         }
     
     static member Segment s =
@@ -306,7 +291,7 @@ type Route =
         | 0 -> Route.Empty
         | _ ->
         let mutable method = None
-        let mutable body = null
+        let mutable body = None
         let segments = System.Collections.Generic.Queue()
         let mutable queryArgs = Map.empty
         let mutable formData = Map.empty
@@ -315,8 +300,8 @@ type Route =
             | Some _ as m ->
                 method <- m
             | _ -> ()
-            match p.Body.Value with
-            | null -> ()
+            match p.Body with
+            | None -> ()
             | b ->
                 body <- b
             queryArgs <- p.QueryArgs |> Map.foldBack Map.add queryArgs 
@@ -328,7 +313,7 @@ type Route =
             QueryArgs = queryArgs
             FormData = formData
             Method = method
-            Body = Lazy.CreateFromValue body
+            Body = body
         }
 
     static member ParseQuery(q: string) =
@@ -360,22 +345,18 @@ type Route =
             QueryArgs = q
         }
 
-    static member FromRequest(r: HttpRequest) =
-        let u = HttpHelpers.SetUri r
-        let p =
-            if u.IsAbsoluteUri then 
-                u.AbsolutePath 
-            else 
-                let s = u.OriginalString
-                match s.IndexOf('?') with
-                | -1 -> s
-                | q -> s.Substring(0, q)
+    static member FromRequest(r: IHttpRequest) =
+        let p = r.Path
         {
             Segments = p.Split([| '/' |], System.StringSplitOptions.RemoveEmptyEntries) |> List.ofArray
-            QueryArgs = HttpHelpers.CollectionToMap r.Query
-            FormData = if r.HasFormContentType then HttpHelpers.CollectionToMap r.Form else Map.empty
-            Method = Some (r.Method.ToString())
-            Body = lazy r.Body.ToString()
+            QueryArgs = r.Query
+            FormData = r.Form
+            Method = Some (r.Method)
+            Body =
+                if r.IsBodyTextCompleted then
+                    Some r.BodyText.Result
+                else
+                    None
         }
 
     static member FromHash(path: string, ?strict: bool) =
@@ -403,8 +384,8 @@ module internal List =
         | _ -> None
 
 type IRouter<'T> =
-    abstract Route : HttpRequest -> option<'T>
-    abstract Link : 'T -> option<System.Uri>
+    abstract Route : IHttpRequest -> option<'T>
+    abstract Link : 'T -> option<string>
 
 type Router =
     {
@@ -505,7 +486,7 @@ and Router<'T when 'T: equality> =
             this.Parse path
             |> Seq.tryPick (fun (path, value) -> if List.isEmpty path.Segments then Some value else None)
         member this.Link ep =
-            this.Write ep |> Option.map (fun p -> System.Uri((Route.Combine p).ToLink(), System.UriKind.Relative))
+            this.Write ep |> Option.map (fun p -> (Route.Combine p).ToLink())
         
 module Router =
     let Combine (a: Router<'A>) (b: Router<'B>) = a / b
@@ -520,7 +501,7 @@ module Router =
         }
 
     /// Creates a fully customized router.
-    let New (route: HttpRequest -> option<'T>) (link: 'T -> option<System.Uri>) =
+    let New (route: IHttpRequest -> option<'T>) (link: 'T -> option<string>) =
         { new IRouter<'T> with
             member this.Route req = route req
             member this.Link e = link e
@@ -632,18 +613,21 @@ module Router =
                 Seq.singleton { Route.Empty with Method = Some m }
         }
 
-    [<System.Obsolete("Do not use request body for routing.")>]
+    type BodyTextNeededForRoute () = 
+        inherit exn "This router needs body text loaded synchronously. Wait for Http.Request.BodyText to finish then try again."
+
     let Body (deserialize: string -> option<'A>) (serialize: 'A -> string) : Router<'A> =
         {
             Parse = fun path ->
-                match path.Body.Value with
-                | null -> Seq.empty
-                | x ->
+                match path.Body with
+                | None -> raise (BodyTextNeededForRoute())
+                | Some null -> Seq.empty
+                | Some x ->
                     match deserialize x with
-                    | Some b -> Seq.singleton ({ path with Body = Lazy.CreateFromValue null}, b)
+                    | Some b -> Seq.singleton ({path with Body = Some null}, b)
                     | _ -> Seq.empty
             Write = fun value ->
-                Some <| Seq.singleton { Route.Empty with Body = Lazy.CreateFromValue (serialize value) }
+                Some <| Seq.singleton { Route.Empty with Body = Some (serialize value) }
         }
 
     let FormData (item: Router<'A>) : Router<'A> =
@@ -737,7 +721,6 @@ module Router =
     let Box (router: Router<'A>): Router<obj> =
         BoxImpl (function :? 'A as v -> Some v | _ -> None) router
 
-    [<System.Obsolete("Do not use request body for routing.")>]
     let Json<'T when 'T: equality> : Router<'T> =
         Body (fun s -> try Some (Json.JsonSerializer.Deserialize<'T> s) with _ -> None) Json.JsonSerializer.Serialize<'T>
 
@@ -895,17 +878,15 @@ type Router with
     static member Empty<'T when 'T: equality>() =
         Router.Empty<'T>
 
-    static member New(route: System.Func<HttpRequest, 'T>, link: System.Func<'T, System.Uri>) =
+    static member New(route: System.Func<IHttpRequest, 'T>, link: System.Func<'T, string>) =
         Router.New (route.Invoke >> Option.ofObj) (link.Invoke >> Option.ofObj)
 
     static member Method(method:string) =
         Router.Method method
 
-    [<System.Obsolete("Do not use request body for routing.")>]
     static member Body(des:System.Func<string, 'T>, ser: System.Func<'T, string>) =
         Router.Body (fun s -> des.Invoke s |> Option.ofObj) ser.Invoke 
 
-    [<System.Obsolete("Do not use request body for routing.")>]
     static member Json<'T when 'T: equality>() =
         Router.Json<'T>
 
@@ -1005,17 +986,7 @@ module IRouter =
             member this.Route req = router.Route req |> Option.map encode
             member this.Link e = decode e |> Option.bind router.Link
         } 
-
-    let private makeUri uri =
-        let mutable res = null
-        if Uri.TryCreate(uri, UriKind.Relative, &res) then res else
-            Uri(uri, UriKind.Absolute)
-    
-    let private path (uri: Uri) =
-        if uri.IsAbsoluteUri
-        then uri.AbsolutePath
-        else uri.OriginalString |> joinWithSlash "/"
-        
+            
     let private trimFinalSlash (s: string) =
         match s.TrimEnd('/') with
         | "" -> "/"
@@ -1023,16 +994,18 @@ module IRouter =
     
     let Shift prefix (router: IRouter<'T>) =
         let prefix = joinWithSlash "/" prefix
-        let shift (loc: System.Uri) =
-            if loc.IsAbsoluteUri then loc else
-                makeUri (joinWithSlash prefix (path loc) |> trimFinalSlash)
+        let shift (loc: string) =
+            if HttpHelpers.IsAbsoluteUrl loc then 
+                loc 
+            else
+                (joinWithSlash prefix loc |> trimFinalSlash)
         { new IRouter<'T> with
             member this.Route req =
-                let builder = req.PathBase.ToUriComponent() |> System.Uri |> UriBuilder
-                if builder.Path.StartsWith prefix then
-                    builder.Path <- builder.Path.Substring prefix.Length
-                    req.PathBase <- builder.Uri |> PathString.FromUriComponent
-                    router.Route req
+                let p = req.Path
+                if p.StartsWith prefix then
+                    let newP = req.Path.Substring prefix.Length
+                    let newReq = RHRWithPath (req, newP)
+                    router.Route newReq
                 else
                     None
             member this.Link e = router.Link e |> Option.map shift

@@ -20,20 +20,23 @@
 
 namespace Sitelets
 
+
+
 module SiteletHelper =
     open Sitelets
-
-    open System.Text.Json
 
     open System.Threading.Tasks
     open Microsoft.AspNetCore.Mvc
     open Microsoft.AspNetCore.Mvc.Abstractions
     open Microsoft.AspNetCore.Routing
     open Microsoft.AspNetCore.Http
+    open Microsoft.Extensions.Options
+    open System.Text.Json
     
     type SiteletHttpFuncResult = Task<HttpContext option>
     type SiteletHttpFunc =  HttpContext -> SiteletHttpFuncResult
     type SiteletHttpHandler = SiteletHttpFunc -> SiteletHttpFunc
+
 
     let rec internal contentHelper (httpCtx: HttpContext) (content: obj) =
         async {
@@ -57,7 +60,8 @@ module SiteletHelper =
                     return! contentHelper httpCtx contentResult
                 else
                     httpCtx.Response.StatusCode <- StatusCodes.Status200OK
-                    do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content) |> Async.AwaitTask
+                    let jsonOptions = httpCtx.RequestServices.GetService(typeof<IOptions<JsonSerializerOptions>>) :?> IOptions<JsonSerializerOptions>;
+                    do! System.Text.Json.JsonSerializer.SerializeAsync(httpCtx.Response.Body, content, jsonOptions.Value) |> Async.AwaitTask
                     return None
         }
     
@@ -74,12 +78,13 @@ module SiteletHelper =
         | _ -> a + b
 
     let internal createContext (sl: Sitelet<'T>) (httpCtx: HttpContext) =
+        
         let appPath = httpCtx.Request.PathBase.ToUriComponent()
         let link (x: 'T) =
             match sl.Router.Link x with
             | None -> failwithf "Failed to link to %O" (box x)
-            | Some loc when loc.IsAbsoluteUri -> string loc
-            | Some loc -> appPath ++ string loc
+            | Some loc when HttpHelpers.IsAbsoluteUrl loc -> loc
+            | Some loc -> appPath ++ loc
 
         {
             Link = link
@@ -89,14 +94,33 @@ module SiteletHelper =
     let sitelet (sl : Sitelet<'T>) : SiteletHttpHandler =
         fun (next: SiteletHttpFunc) ->
             let handleSitelet (httpCtx: HttpContext) =
-                let req = httpCtx.Request
-                match sl.Router.Route req with
-                | Some endpoint ->
-                    let ctx = createContext sl httpCtx
-                    let content = sl.Controller ctx endpoint
-                    let t = contentHelper httpCtx content
-                    t |> Async.StartAsTask
-                | None -> 
-                    next httpCtx
+                let req = RoutedHttpRequest httpCtx.Request :> IHttpRequest
+
+                let handleRouterResult r =
+                    match r with
+                    | Some endpoint ->
+                        let ctx = createContext sl httpCtx
+                        let content = sl.Controller ctx endpoint
+                        contentHelper httpCtx content
+                        |> Async.StartAsTask
+                    | None ->
+                        next httpCtx
                 
+                let routeWithoutBody =
+                    try
+                        Some (sl.Router.Route req)
+                    with :? Router.BodyTextNeededForRoute ->
+                        None 
+
+                match routeWithoutBody with
+                | Some r ->
+                    handleRouterResult r
+                | None -> 
+                    async {
+                        do! req.BodyText |> Async.AwaitTask |> Async.Ignore
+                        let routeWithBody = sl.Router.Route req
+                        return! handleRouterResult routeWithBody |> Async.AwaitTask  
+                    }
+                    |> Async.StartAsTask
+
             handleSitelet

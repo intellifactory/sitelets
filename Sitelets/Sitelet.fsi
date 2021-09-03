@@ -52,7 +52,7 @@ type Sitelet<'T when 'T : equality> =
     member Box : unit -> Sitelet<obj>
     
     /// Constructs a protected sitelet given the filter specification.
-    member Protect : verifyUser: Func<string, bool> * loginRedirect: Func<'T, 'T> -> Sitelet<'T>
+    member Protect : verifyUser: Func<string, bool> * loginRedirect: Func<'T, 'T> * scheme: string -> Sitelet<'T>
 
     /// Maps over the sitelet endpoint type. Can be partial if embed/unembed returns null.
     member Map<'U when 'U : equality> : embed: Func<'T, 'U> * unembed: Func<'U, 'T> -> Sitelet<'U>
@@ -79,9 +79,10 @@ module Sitelet =
             LoginRedirect : 'T -> 'T
         }
 
-    /// Constructs a protected sitelet given the filter specification.
+    /// Constructs a protected sitelet given the filter specification and authentication scheme.
     val Protect<'T when 'T : equality> :
         filter: Filter<'T> ->
+        scheme: string ->
         site: Sitelet<'T> ->
         Sitelet<'T>
 
@@ -132,18 +133,8 @@ module Sitelet =
     val Box<'T when 'T : equality> :
         sitelet: Sitelet<'T> -> Sitelet<obj>
 
-    /// Boxes the sitelet endpoint type to Object type.
-    [<Obsolete "Use Sitelet.Box instead.">]
-    val Upcast<'T when 'T : equality> :
-        sitelet: Sitelet<'T> -> Sitelet<obj>
-
     /// Reverses the Box operation on the sitelet.
     val Unbox<'T when 'T : equality> :
-        sitelet: Sitelet<obj> -> Sitelet<'T>
-
-    /// Reverses the Box operation on the sitelet.
-    [<Obsolete "Use Sitelet.Unbox instead, now safe, does a type check after parsing.">]
-    val UnsafeDowncast<'T when 'T : equality> :
         sitelet: Sitelet<obj> -> Sitelet<'T>
 
     /// Constructs a sitelet with an inferred router and a given controller function.

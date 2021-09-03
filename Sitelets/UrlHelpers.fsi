@@ -83,16 +83,16 @@ module UrlHelpers =
     val (|REGEX|_|) : regexp: string -> input: string -> string option
 
     /// Split the Path component of a URL by a given character.
-    val (|SPLIT_BY|_|) : char -> Uri -> string list option
+    val (|SPLIT_BY|_|) : char -> string -> string list option
 
     /// Extract the URL and parameters from an HTTP request
     /// that uses the given method.
     val (|DELETE|GET|OPTIONS|POST|PUT|TRACE|SPECIAL|) :
         HttpRequest ->
-        Choice< (string * string) list * Uri,
-                (string * string) list * Uri,
-                (string * string) list * Uri,
-                (string * string) list * Uri,
-                (string * string) list * Uri,
-                (string * string) list * Uri,
-                string * (unit -> (string * string) list) * Uri >
+        Choice< (string * string) list * string,
+                (string * string) list * string,
+                (string * string) list * string,
+                (string * string) list * string,
+                (string * string) list * string,
+                (string * string) list * string,
+                string * (unit -> (string * string) list) * string >

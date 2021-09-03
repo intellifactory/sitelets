@@ -22,16 +22,19 @@ namespace Sitelets
 
 /// Defines HTTP-related functionality.
 module HttpHelpers =
-    open System
     open System.Collections.Generic
-    open System.Collections.Specialized
-    open System.IO
-    open System.Threading.Tasks
     open Microsoft.AspNetCore.Http
 
     type SV = Microsoft.Extensions.Primitives.StringValues
-    
+
     let CollectionToMap<'T when 'T :> IEnumerable<KeyValuePair<string, SV>>> (c: 'T) : Map<string, string> =
+        c
+        |> Seq.map (fun i ->
+            i.Key, i.Value.ToString()
+        )
+        |> Map.ofSeq
+
+    let CollectionToMap2<'T when 'T :> IEnumerable<KeyValuePair<string, string>>> (c: 'T) : Map<string, string> =
         c
         |> Seq.map (fun i ->
             i.Key, i.Value.ToString()
@@ -44,26 +47,73 @@ module HttpHelpers =
             KeyValuePair (k, Microsoft.Extensions.Primitives.StringValues v)
             )
 
-    let ToQuery (req: HttpRequest) : Map<string, string> =
-        let returnMap : Map<string, string> = Map.empty
-        for KeyValue(k, v) in req.Query do
-            returnMap.Add (k, v.ToString()) |> ignore
-        returnMap
-
-    let ToForm (req: HttpRequest) : Map<string, string> =
-        if req.HasFormContentType then
-            let returnMap : Map<string, string> = Map.empty
-            for KeyValue(k, v) in req.Query do
-                returnMap.Add (k, v.ToString()) |> ignore
-            returnMap
+    let IsAbsoluteUrl (url: string) =
+        if url.StartsWith ("//") then
+            true
         else
-            Map.empty
+            match url.IndexOf("://") with
+            | -1 -> false
+            | i -> i < url.IndexOfAny([| '/'; '?'; '#' |])
 
-    let SetUri (r: HttpRequest) =
-        System.UriBuilder(
-            r.Scheme,
-            r.Host.Host,
-            r.Host.Port.GetValueOrDefault(-1),
-            r.Path.ToString(),
-            r.QueryString.ToString()
-        ).Uri
+[<AutoOpen>]
+module RoutedRequest =
+    open System.Collections.Generic
+    open Microsoft.AspNetCore.Http
+    open HttpHelpers
+    open System.Threading.Tasks
+
+    type IHttpRequest =
+        abstract member BodyText: Task<string>
+        abstract member IsBodyTextCompleted: bool
+        abstract member Cookies: Map<string, string>
+        abstract member Form: Map<string, string>
+        abstract member Headers: Map<string, string>
+        abstract member Host: string
+        abstract member Method: string
+        abstract member Path: string
+        abstract member PathBase: string
+        abstract member Query: Map<string, string>
+        abstract member Scheme: string
+
+    type RoutedHttpRequest (req: HttpRequest) =
+        let mutable bodyText = null : Task<string>
+
+        interface IHttpRequest with
+            override x.BodyText =
+                if isNull bodyText then
+                    let i = req.Body
+                    if isNull i then
+                        bodyText <- Task.FromResult ""    
+                    else
+                        let reader = new System.IO.StreamReader(i, System.Text.Encoding.UTF8, false, 1024, leaveOpen = true)
+                        bodyText <- reader.ReadToEndAsync()
+                bodyText
+            override x.IsBodyTextCompleted =
+                not (isNull bodyText) && bodyText.IsCompleted
+            override x.Cookies = CollectionToMap2 req.Cookies
+            override x.Form =
+                if req.HasFormContentType then
+                    CollectionToMap req.Form
+                else
+                    Map.empty
+            override x.Headers = CollectionToMap req.Headers
+            override x.Host = req.Host.ToString()
+            override x.Method = req.Method
+            override x.Path = req.Path.ToString()
+            override x.PathBase = req.PathBase.ToString()
+            override x.Query = CollectionToMap req.Query
+            override x.Scheme = req.Scheme
+
+    type RHRWithPath (ireq: IHttpRequest, p: string) =
+        interface IHttpRequest with
+            override x.BodyText = ireq.BodyText
+            override x.IsBodyTextCompleted = ireq.IsBodyTextCompleted
+            override x.Cookies = ireq.Cookies
+            override x.Form = ireq.Form
+            override x.Headers = ireq.Headers
+            override x.Host = ireq.Host
+            override x.Method = ireq.Method
+            override x.Path = p
+            override x.PathBase = ireq.PathBase
+            override x.Query = ireq.Query
+            override x.Scheme = ireq.Scheme

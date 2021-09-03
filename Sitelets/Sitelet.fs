@@ -21,8 +21,7 @@
 namespace Sitelets
 
 open Microsoft.AspNetCore.Mvc
-
-#nowarn "44" // Obsolete CustomContent, CustomContentAsync, PageContent, PageContentAsync
+open Microsoft.AspNetCore.Authentication
 
 open System
 open System.Threading.Tasks
@@ -87,7 +86,7 @@ module Sitelet =
         }
 
     /// Constructs a protected sitelet given the filter specification.
-    let Protect (filter: Filter<'T>) (site: Sitelet<'T>)
+    let Protect (filter: Filter<'T>) (scheme: string) (site: Sitelet<'T>)
         : Sitelet<'T> =
         {
             Router = site.Router
@@ -95,17 +94,23 @@ module Sitelet =
                 let prot = filter
                 let failure () =
                     RedirectResult (ctx.Link endpoint) |> box
-                let loggedIn = 
-                    let nameClaim = ctx.HttpContext.User.FindFirst(Security.Claims.ClaimTypes.NameIdentifier)
-                    if isNull nameClaim then None else Some nameClaim.Value
-                match loggedIn with
-                | Some user ->
-                    if prot.VerifyUser user then
-                        site.Controller ctx endpoint
+                async {
+                    let! loggedIn = 
+                        let authService = ctx.HttpContext.RequestServices.GetService(typeof<IAuthenticationService>) :?> AuthenticationService
+                        if not <| isNull authService then
+                            authService.AuthenticateAsync(ctx.HttpContext, scheme) |> Async.AwaitTask
+                        else
+                            failwith "Authentication service not found"
+                    if loggedIn.Succeeded then
+                        let user = loggedIn.Principal.Identity.Name
+                        if prot.VerifyUser user then
+                            return site.Controller ctx endpoint
+                        else
+                            return failure ()
                     else
-                        failure ()
-                | None ->
-                    failure ()
+                        return failure ()
+                }
+                |> Async.StartAsTask |> box
         }
 
     /// Constructs a singleton sitelet that contains exactly one endpoint
@@ -209,8 +214,6 @@ module Sitelet =
                 sitelet.Controller (Context.Map box ctx) (unbox a)
         }
 
-    let Upcast sitelet = Box sitelet
-
     /// Reverses the Box operation on the sitelet.
     let Unbox<'T when 'T : equality> (sitelet: Sitelet<obj>) : Sitelet<'T> =
         {
@@ -218,8 +221,6 @@ module Sitelet =
             Controller = fun ctx a ->
                 sitelet.Controller (Context.Map unbox ctx) (box a)
         }
-
-    let UnsafeDowncast sitelet = Unbox sitelet
 
     /// Constructs a sitelet with an inferred router and a given controller
     /// function.
@@ -286,11 +287,11 @@ type Sitelet<'T when 'T : equality> with
     member this.Box() =
         Sitelet.Box this
 
-    member this.Protect (verifyUser: Func<string, bool>, loginRedirect: Func<'T, 'T>) =
+    member this.Protect (verifyUser: Func<string, bool>, loginRedirect: Func<'T, 'T>, scheme: string) =
         this |> Sitelet.Protect {
             VerifyUser = verifyUser.Invoke 
             LoginRedirect = loginRedirect.Invoke
-        }
+        } scheme
 
     member this.Map (embed: Func<'T, 'U>, unembed: Func<'U, 'T>) =
         Sitelet.TryMap (embed.Invoke >> ofObjNoConstraint) (unembed.Invoke >> ofObjNoConstraint) this
