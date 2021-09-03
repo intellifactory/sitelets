@@ -26,7 +26,6 @@
     <Compile Include="Middleware.fs" />
     <Compile Include="UrlHelpers.fsi" />
     <Compile Include="UrlHelpers.fs" />
-    <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
