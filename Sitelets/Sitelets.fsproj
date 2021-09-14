@@ -18,6 +18,8 @@
     <Compile Include="InferRouter.fs" />
     <Compile Include="Sitelet.fsi" />
     <Compile Include="Sitelet.fs" />
+    <Compile Include="OpenApiHelper.fs" />
+    <Compile Include="OpenApiIntegration.fs" />
     <Compile Include="SiteletHelper.fs" />
     <Compile Include="Application.fsi" />
     <Compile Include="Application.fs" />
@@ -32,6 +34,9 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="5.0.0" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="0.17.4" />
+    <PackageReference Include="Microsoft.OpenApi" Version="1.2.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.2.1" />
     <PackageReference Include="System.Text.Json" Version="5.0.2" />
   </ItemGroup>
 </Project>

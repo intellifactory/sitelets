@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="OpenApiIntegrationTests.fs" />
     <Compile Include="IntegrationTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />

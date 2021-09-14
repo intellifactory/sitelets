@@ -20,15 +20,12 @@
 namespace Sitelets
 
 open System
-open System.IO
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Http
-open Microsoft.AspNetCore.Mvc
-open Microsoft.AspNetCore.Routing
-open Microsoft.AspNetCore.Mvc.Abstractions
-open System.Runtime.CompilerServices
 open Microsoft.AspNetCore.Builder
-open System.Text.Json
+open System.Runtime.CompilerServices
+open Microsoft.AspNetCore.Routing
+
 
 module Middleware =
 
@@ -76,4 +73,18 @@ module Middleware =
 type ApplicationBuilderExtensions =
     [<Extension>]
     static member UseSitelets(this: IApplicationBuilder, ?sitelet: Sitelet<'T>) =
-        this.Use(Middleware.Middleware (sitelet |> Option.map (fun s -> Sitelet.Box s)))
+        this.Use(Middleware.Middleware (sitelet |> Option.map Sitelet.Box))
+
+    [<Extension>]
+    static member UseOpenApi(this: IEndpointRouteBuilder, endpointsType: Type, config: OpenApiIntegration.GenerateOpenApiConfig) =
+
+        let responseBytes = OpenApiIntegration.generateSwaggerJsonBytes config endpointsType
+
+        let getSwaggerJson (ctx : HttpContext) =
+            async {
+                ctx.Response.Headers.[Microsoft.Net.Http.Headers.HeaderNames.ContentType] <- Microsoft.Extensions.Primitives.StringValues("application/json")
+                do! ctx.Response.Body.WriteAsync(responseBytes, 0, responseBytes.Length) |> Async.AwaitTask
+            }
+            |> Async.StartAsTask :> Task
+
+        this.MapGet("swagger.json", new RequestDelegate(getSwaggerJson)) |> ignore

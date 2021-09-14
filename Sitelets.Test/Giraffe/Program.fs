@@ -16,6 +16,8 @@ open Microsoft.AspNetCore.Mvc
 open Microsoft.AspNetCore.Routing
 open Microsoft.AspNetCore.Mvc.Abstractions
 open System.Collections.Generic
+open System.Text.Json
+open System.Text.Json.Serialization
 
 // ---------------------------------
 // Models
@@ -68,7 +70,7 @@ let indexHandler (name : string) =
 // ---------------------------------
 
 type Endpoint =
-    | [<EndPoint "GET /echo">] Str of string
+    | [<EndPoint "GET /echo">] Str of msg:string
     | [<EndPoint "GET /actionresult">] ActionResult
     | [<EndPoint "GET /task/str">] Task1
     | [<EndPoint "GET /task/actionresult">] Task2
@@ -126,15 +128,25 @@ let errorHandler (ex : Exception) (logger : ILogger) =
 // ---------------------------------
 // Config and Main
 // ---------------------------------
+let servers = [| "http://localhost:5000"; "https://localhost:5001" |]
 
 let configureCors (builder : CorsPolicyBuilder) =
     builder
-        .WithOrigins(
-            "http://localhost:5000",
-            "https://localhost:5001")
+       .WithOrigins(servers)
        .AllowAnyMethod()
        .AllowAnyHeader()
        |> ignore
+
+let serializerOptions = 
+    let options = JsonSerializerOptions (PropertyNamingPolicy=JsonNamingPolicy.CamelCase)
+    options.Converters.Add( JsonStringEnumConverter())
+    options.Converters.Add(
+        JsonFSharpConverter(
+            JsonUnionEncoding.ExternalTag
+            ||| JsonUnionEncoding.NamedFields
+            ||| JsonUnionEncoding.UnwrapFieldlessTags
+            ||| JsonUnionEncoding.UnwrapOption))
+    options
 
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
@@ -142,9 +154,19 @@ let configureApp (app : IApplicationBuilder) =
     | true  ->
         app.UseDeveloperExceptionPage()
     | false ->
-        app .UseGiraffeErrorHandler(errorHandler)
+        app
+            .UseGiraffeErrorHandler(errorHandler)
             .UseHttpsRedirection())
+        .UseRouting()
+        .UseEndpoints(fun e ->
+            e.UseOpenApi(typeof<Endpoint>, {
+                Version = "1.0.0.0"
+                Title = "Sample Giraffe Test"
+                ServerUrls = servers
+                SerializerOptions = serializerOptions
+                }))
         .UseCors(configureCors)
+        .UseSwaggerUI(fun c -> c.SwaggerEndpoint("/swagger.json", "My API V1"))
         .UseStaticFiles()
         .UseGiraffe(webApp)
 
@@ -152,6 +174,8 @@ let configureServices (services : IServiceCollection) =
     services.AddCors()    |> ignore
     services.AddGiraffe() |> ignore
     services.AddMvc()     |> ignore
+    services.AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializerOptions)) |> ignore
+
 
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole()
