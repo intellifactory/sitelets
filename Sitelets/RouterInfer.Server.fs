@@ -164,13 +164,13 @@ module internal ServerRouting =
         match annot.Query with
         | Some _ -> queryRouter t name r
         | _ ->
-        match annot.FormData with
-        | Some _ -> queryRouter t name r |> IFormData
-        | _ ->
-        match annot.Json with
-        | Some _ -> getJsonRouter t
-        | _ when annot.IsWildcard -> wildCardRouter t
-        | _ -> r()
+            match annot.FormData with
+            | Some _ -> queryRouter t name r |> IFormData
+            | _ ->
+                match annot.Json with
+                | Some _ -> getJsonRouter t
+                | _ when annot.IsWildcard -> wildCardRouter t
+                | _ -> r()
 
     and enumRouter (t: Type) : InferredRouter =
         getRouter (System.Enum.GetUnderlyingType(t))

@@ -55,3 +55,10 @@ module internal Extensions =
 
     let internal ofObjNoConstraint (x: 'T) =
         if obj.ReferenceEquals(x, null) then None else Some x
+
+    let info = System.Globalization.CultureInfo.InvariantCulture.TextInfo
+
+    let pascalCase (s: string) =
+        s
+        |> (info.ToLower >> info.ToTitleCase)
+
